@@ -1,0 +1,7 @@
+language: javascript
+suffix: .js
+autoreload: true
+libraries:
+  - library
+scripts:
+  - scripts

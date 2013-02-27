@@ -1,0 +1,15 @@
+name: "EasyScript"
+version: "1.0"
+main: "org.cyberiantiger.minecraft.easyscript.EasyScript"
+load: POSTWORLD
+softdepend:
+  - Instances
+commands:
+  script:
+    description: Execute a script
+    usage: /script <name> <args>
+    permission: easyscript.script
+  scriptreload:
+    description: Recompile scripts
+    usage: /scriptreload
+    permission: easyscript.reload
