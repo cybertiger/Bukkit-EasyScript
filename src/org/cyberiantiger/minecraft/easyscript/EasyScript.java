@@ -21,10 +21,8 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.craftbukkit.v1_4_R1.CraftServer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventException;
@@ -32,15 +30,18 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistration;
+import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistrationFactory;
 
 public class EasyScript extends JavaPlugin implements Listener {
 
+    private static final CommandRegistration registration =
+            CommandRegistrationFactory.createCommandRegistration();
     private ScriptEngine engine;
     private Invocable invocable;
     private Compilable compilable;
     private ScriptContext engineContext;
     private boolean autoreload;
-    private String suffix;
     private Map<File, Long> libraries;
     private Map<String, ScriptHolder> scripts;
     private List<File> scriptDirectories;
@@ -71,7 +72,6 @@ public class EasyScript extends JavaPlugin implements Listener {
             } else {
                 getLogger().info("Loaded scripting engine: " + engine.getFactory().getEngineName() + " version: " + engine.getFactory().getEngineVersion());
             }
-            this.suffix = config.getString("suffix");
             if ((this.engine instanceof Invocable)) {
                 this.invocable = ((Invocable) this.engine);
             } else {
@@ -93,19 +93,22 @@ public class EasyScript extends JavaPlugin implements Listener {
             this.engineContext.setWriter(new LogWriter(Level.INFO));
             this.engineContext.setErrorWriter(new LogWriter(Level.WARNING));
             for (String s : config.getStringList("libraries")) {
-                File library = new File(getDataFolder(), s + this.suffix);
-                if (library.isFile()) {
-                    this.libraries.put(library, Long.valueOf(library.lastModified()));
-                    this.engineContext.setAttribute(ScriptEngine.FILENAME, library.getPath(), ScriptContext.ENGINE_SCOPE);
-                    try {
-                        this.engine.eval(new FileReader(library));
-                    } catch (ScriptException ex) {
-                        getLogger().log(Level.WARNING, "Error in library: " + library + ":" + ex.getMessage());
-                    } catch (FileNotFoundException ex) {
-                        getLogger().log(Level.SEVERE, null, ex);
+                for (String suffix : engine.getFactory().getExtensions()) {
+                    File library = new File(getDataFolder(), s + '.' + suffix);
+                    if (library.isFile()) {
+                        this.libraries.put(library, Long.valueOf(library.lastModified()));
+                        this.engineContext.setAttribute(ScriptEngine.FILENAME, library.getPath(), ScriptContext.ENGINE_SCOPE);
+                        try {
+                            this.engine.eval(new FileReader(library));
+                        } catch (ScriptException ex) {
+                            getLogger().log(Level.WARNING, "Error in library: " + library + ":" + ex.getMessage());
+                        } catch (FileNotFoundException ex) {
+                            getLogger().log(Level.SEVERE, null, ex);
+                        }
+                        break;
+                    } else {
+                        getLogger().warning("Failed to find library file : " + library);
                     }
-                } else {
-                    getLogger().warning("Failed to find library file : " + library);
                 }
             }
             for (String s : config.getStringList("scripts")) {
@@ -132,9 +135,8 @@ public class EasyScript extends JavaPlugin implements Listener {
         this.libraries.clear();
         this.scripts.clear();
         this.scriptDirectories.clear();
-        CommandMap map = ((CraftServer) getServer()).getCommandMap();
         for (ScriptCommand command : scriptCommands.values()) {
-            command.unregister(map);
+            registration.unregisterCommand(getServer(), command);
         }
         scriptCommands.clear();
     }
@@ -147,9 +149,8 @@ public class EasyScript extends JavaPlugin implements Listener {
 
     public ScriptCommand registerCommand(String cmd, String function) {
         ScriptCommand command = new ScriptCommand(cmd, function);
+        registration.registerCommand(getServer(), command);
         scriptCommands.put(cmd, command);
-        CommandMap map = ((CraftServer) getServer()).getCommandMap();
-        map.register("script", command);
         return command;
     }
 
@@ -210,17 +211,21 @@ public class EasyScript extends JavaPlugin implements Listener {
             }
         }
 
+        LOOP:
         for (File dir : this.scriptDirectories) {
-            File script = new File(dir, name + this.suffix);
-            if (script.isFile()) {
-                try {
-                    CompiledScript compiledScript = this.compilable.compile(new FileReader(script));
-                    cached = new ScriptHolder(compiledScript, script, Long.valueOf(script.lastModified()));
-                    this.scripts.put(name, cached);
-                } catch (FileNotFoundException ex) {
-                    getLogger().log(Level.SEVERE, null, ex);
-                } catch (ScriptException ex) {
-                    getLogger().log(Level.WARNING, "Error in script:  " + script + " " + ex.getMessage());
+            for (String suffix : engine.getFactory().getExtensions()) {
+                File script = new File(dir, name + '.' + suffix);
+                if (script.isFile()) {
+                    try {
+                        CompiledScript compiledScript = this.compilable.compile(new FileReader(script));
+                        cached = new ScriptHolder(compiledScript, script, Long.valueOf(script.lastModified()));
+                        this.scripts.put(name, cached);
+                    } catch (FileNotFoundException ex) {
+                        getLogger().log(Level.SEVERE, null, ex);
+                    } catch (ScriptException ex) {
+                        getLogger().log(Level.WARNING, "Error in script:  " + script + " " + ex.getMessage());
+                    }
+                    break LOOP;
                 }
             }
         }

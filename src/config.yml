@@ -1,5 +1,4 @@
 language: javascript
-suffix: .js
 autoreload: true
 libraries:
   - library
