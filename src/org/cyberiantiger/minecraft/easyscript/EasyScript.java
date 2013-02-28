@@ -70,7 +70,11 @@ public class EasyScript extends JavaPlugin implements Listener {
                 getServer().getPluginManager().disablePlugin(this);
                 return;
             } else {
-                getLogger().info("Loaded scripting engine: " + engine.getFactory().getEngineName() + " version: " + engine.getFactory().getEngineVersion());
+                if (engine.getFactory() != null) {
+                    getLogger().info("Loaded scripting engine: " + engine.getFactory().getEngineName() + " version: " + engine.getFactory().getEngineVersion());
+                } else {
+                    getLogger().info("Broken script engine, engine.getFactory() returned null, probably beanshell.");
+                }
             }
             if ((this.engine instanceof Invocable)) {
                 this.invocable = ((Invocable) this.engine);
@@ -93,6 +97,7 @@ public class EasyScript extends JavaPlugin implements Listener {
             this.engineContext.setWriter(new LogWriter(Level.INFO));
             this.engineContext.setErrorWriter(new LogWriter(Level.WARNING));
             for (String s : config.getStringList("libraries")) {
+                boolean found = false;
                 for (String suffix : engine.getFactory().getExtensions()) {
                     File library = new File(getDataFolder(), s + '.' + suffix);
                     if (library.isFile()) {
@@ -106,10 +111,9 @@ public class EasyScript extends JavaPlugin implements Listener {
                             getLogger().log(Level.SEVERE, null, ex);
                         }
                         break;
-                    } else {
-                        getLogger().warning("Failed to find library file : " + library);
                     }
                 }
+                if (!found) getLogger().warning("Failed to find library file : " + s);
             }
             for (String s : config.getStringList("scripts")) {
                 File scriptDirectory = new File(getDataFolder(), s);
