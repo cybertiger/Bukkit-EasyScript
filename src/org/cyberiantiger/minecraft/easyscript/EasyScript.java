@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.script.Bindings;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
@@ -24,7 +23,6 @@ import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.craftbukkit.v1_4_R1.CraftServer;
 import org.bukkit.entity.Player;
@@ -58,59 +56,69 @@ public class EasyScript extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         super.onEnable();
-        saveDefaultConfig();
-        FileConfiguration config = getConfig();
-        ScriptEngineManager manager = new ScriptEngineManager(EasyScript.class.getClassLoader());
-        this.autoreload = config.getBoolean("autoreload");
-        this.engine = manager.getEngineByName(config.getString("language"));
-        if (this.engine == null) {
-            getLogger().severe("Script engine named: " + config.getString("language") + " not found, disabling plugin.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
-        this.suffix = config.getString("suffix");
-        if ((this.engine instanceof Invocable)) {
-            this.invocable = ((Invocable) this.engine);
-        } else {
-            getLogger().severe("Selected scripting engine does not implement javax.script.Invocable, disabling plugin.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
-        if ((this.engine instanceof Compilable)) {
-            this.compilable = ((Compilable) this.engine);
-        } else {
-            getLogger().severe("Selected scripting engine does not implement javax.script.Compilable, disabling plugin.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
-        this.engineContext = this.engine.getContext();
-        this.engineContext.setAttribute("plugin", this, 100);
-        this.engineContext.setAttribute("server", getServer(), 100);
-        this.engineContext.setAttribute("log", getLogger(), 100);
-        this.engineContext.setWriter(new LogWriter(Level.INFO));
-        this.engineContext.setErrorWriter(new LogWriter(Level.WARNING));
-        for (String s : config.getStringList("libraries")) {
-            File library = new File(getDataFolder(), s + this.suffix);
-            if (library.isFile()) {
-                this.libraries.put(library, Long.valueOf(library.lastModified()));
-                try {
-                    this.engine.eval(new FileReader(library));
-                } catch (ScriptException ex) {
-                    getLogger().log(Level.WARNING, "Error in library: " + library + ":" + ex.getMessage());
-                } catch (FileNotFoundException ex) {
-                    getLogger().log(Level.SEVERE, null, ex);
-                }
+        ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(EasyScript.class.getClassLoader());
+            saveDefaultConfig();
+            FileConfiguration config = getConfig();
+            ScriptEngineManager manager = new ScriptEngineManager(EasyScript.class.getClassLoader());
+            this.autoreload = config.getBoolean("autoreload");
+            this.engine = manager.getEngineByName(config.getString("language"));
+            if (this.engine == null) {
+                getLogger().severe("Script engine named: " + config.getString("language") + " not found, disabling plugin.");
+                getServer().getPluginManager().disablePlugin(this);
+                return;
             } else {
-                getLogger().warning("Failed to find library file : " + library);
+                getLogger().info("Loaded scripting engine: " + engine.getFactory().getEngineName() + " version: " + engine.getFactory().getEngineVersion());
             }
-        }
-        for (String s : config.getStringList("scripts")) {
-            File scriptDirectory = new File(getDataFolder(), s);
-            if (!scriptDirectory.isDirectory()) {
-                getLogger().warning("Script directory not found : " + scriptDirectory);
+            this.suffix = config.getString("suffix");
+            if ((this.engine instanceof Invocable)) {
+                this.invocable = ((Invocable) this.engine);
+            } else {
+                getLogger().severe("Selected scripting engine does not implement javax.script.Invocable, disabling plugin.");
+                getServer().getPluginManager().disablePlugin(this);
+                return;
+            }
+            if ((this.engine instanceof Compilable)) {
+                this.compilable = ((Compilable) this.engine);
+            } else {
+                getLogger().severe("Selected scripting engine does not implement javax.script.Compilable, disabling plugin.");
+                getServer().getPluginManager().disablePlugin(this);
+                return;
+            }
+            this.engineContext = this.engine.getContext();
+            this.engineContext.setAttribute("plugin", this, 100);
+            this.engineContext.setAttribute("server", getServer(), 100);
+            this.engineContext.setAttribute("log", getLogger(), 100);
+            this.engineContext.setWriter(new LogWriter(Level.INFO));
+            this.engineContext.setErrorWriter(new LogWriter(Level.WARNING));
+            for (String s : config.getStringList("libraries")) {
+                File library = new File(getDataFolder(), s + this.suffix);
+                if (library.isFile()) {
+                    this.libraries.put(library, Long.valueOf(library.lastModified()));
+                    this.engineContext.setAttribute(ScriptEngine.FILENAME, library.getPath(), ScriptContext.ENGINE_SCOPE);
+                    try {
+                        this.engine.eval(new FileReader(library));
+                    } catch (ScriptException ex) {
+                        getLogger().log(Level.WARNING, "Error in library: " + library + ":" + ex.getMessage());
+                    } catch (FileNotFoundException ex) {
+                        getLogger().log(Level.SEVERE, null, ex);
+                    }
+                } else {
+                    getLogger().warning("Failed to find library file : " + library);
+                }
+            }
+            for (String s : config.getStringList("scripts")) {
+                File scriptDirectory = new File(getDataFolder(), s);
+                if (!scriptDirectory.isDirectory()) {
+                    getLogger().warning("Script directory not found : " + scriptDirectory);
+                }
+
+                this.scriptDirectories.add(scriptDirectory);
             }
 
-            this.scriptDirectories.add(scriptDirectory);
+        } finally {
+            Thread.currentThread().setContextClassLoader(oldClassLoader);
         }
     }
 
@@ -124,7 +132,7 @@ public class EasyScript extends JavaPlugin implements Listener {
         this.libraries.clear();
         this.scripts.clear();
         this.scriptDirectories.clear();
-        CommandMap map = ((CraftServer)getServer()).getCommandMap();
+        CommandMap map = ((CraftServer) getServer()).getCommandMap();
         for (ScriptCommand command : scriptCommands.values()) {
             command.unregister(map);
         }
@@ -140,7 +148,7 @@ public class EasyScript extends JavaPlugin implements Listener {
     public ScriptCommand registerCommand(String cmd, String function) {
         ScriptCommand command = new ScriptCommand(cmd, function);
         scriptCommands.put(cmd, command);
-        CommandMap map = ((CraftServer)getServer()).getCommandMap();
+        CommandMap map = ((CraftServer) getServer()).getCommandMap();
         map.register("script", command);
         return command;
     }
@@ -234,6 +242,7 @@ public class EasyScript extends JavaPlugin implements Listener {
             String[] shiftArgs = new String[args.length - 1];
             System.arraycopy(args, 1, shiftArgs, 0, shiftArgs.length);
             ScriptContext context = new EasyScriptContext(this.engine, this.engineContext);
+            context.setAttribute(ScriptEngine.FILENAME, holder.getSource().getPath(), EasyScriptContext.SCRIPT_SCOPE);
             if ((sender instanceof BlockCommandSender)) {
                 context.setAttribute("block", ((BlockCommandSender) sender).getBlock(), 50);
             } else {
