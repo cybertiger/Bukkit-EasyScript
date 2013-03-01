@@ -128,7 +128,13 @@ public class EasyScript extends JavaPlugin implements Listener {
 
                 this.scriptDirectories.add(scriptDirectory);
             }
-            registration.updateHelp(getServer());
+            if (!scriptCommands.isEmpty()) {
+                try {
+                    registration.updateHelp(getServer());
+                } catch (UnsupportedOperationException e) {
+                    // Ignored.
+                }
+            }
         } finally {
             Thread.currentThread().setContextClassLoader(oldClassLoader);
         }
@@ -144,14 +150,17 @@ public class EasyScript extends JavaPlugin implements Listener {
         this.libraries.clear();
         this.scripts.clear();
         this.scriptDirectories.clear();
+        boolean updateHelp = !scriptCommands.isEmpty();
         for (PluginCommand command : scriptCommands.values()) {
             registration.unregisterCommand(getServer(), command);
         }
-        try {
-            // Remove any script registered commands from the help.
-            registration.updateHelp(getServer());
-        } catch (UnsupportedOperationException e) {
-            // Ignored
+        if (updateHelp) {
+            try {
+                // Remove any script registered commands from the help.
+                registration.updateHelp(getServer());
+            } catch (UnsupportedOperationException e) {
+                // Ignored
+            }
         }
         scriptCommands.clear();
     }
@@ -161,7 +170,7 @@ public class EasyScript extends JavaPlugin implements Listener {
         getServer().getPluginManager().disablePlugin(this);
         getServer().getPluginManager().enablePlugin(this);
     }
-    
+
     public PluginCommand registerCommand(String cmd, final String function) {
         final PluginCommand command = registration.registerCommand(this, cmd);
         if (command != null) {
