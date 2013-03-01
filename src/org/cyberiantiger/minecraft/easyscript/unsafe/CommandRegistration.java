@@ -5,6 +5,7 @@
 
 package org.cyberiantiger.minecraft.easyscript.unsafe;
 
+import java.util.Collection;
 import org.bukkit.Server;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
@@ -15,6 +16,6 @@ import org.bukkit.plugin.Plugin;
  */
 public interface CommandRegistration {
     public PluginCommand registerCommand(Plugin plugin, String command);
-    public void unregisterCommand(Server server, PluginCommand command);
+    public void unregisterPluginCommands(Server server, Plugin plugin);
     public void updateHelp(Server server);
 }

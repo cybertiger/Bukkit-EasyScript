@@ -128,12 +128,10 @@ public class EasyScript extends JavaPlugin implements Listener {
 
                 this.scriptDirectories.add(scriptDirectory);
             }
-            if (!scriptCommands.isEmpty()) {
-                try {
-                    registration.updateHelp(getServer());
-                } catch (UnsupportedOperationException e) {
-                    // Ignored.
-                }
+            try {
+                registration.updateHelp(getServer());
+            } catch (UnsupportedOperationException e) {
+                // Ignored.
             }
         } finally {
             Thread.currentThread().setContextClassLoader(oldClassLoader);
@@ -150,17 +148,13 @@ public class EasyScript extends JavaPlugin implements Listener {
         this.libraries.clear();
         this.scripts.clear();
         this.scriptDirectories.clear();
-        boolean updateHelp = !scriptCommands.isEmpty();
-        for (PluginCommand command : scriptCommands.values()) {
-            registration.unregisterCommand(getServer(), command);
-        }
-        if (updateHelp) {
-            try {
-                // Remove any script registered commands from the help.
-                registration.updateHelp(getServer());
-            } catch (UnsupportedOperationException e) {
-                // Ignored
-            }
+        // Hack to workaround bukkit reregistering our commands every time
+        // we disable & enable ourselves.
+        try {
+            registration.unregisterPluginCommands(getServer(), this);
+            registration.updateHelp(getServer());
+        } catch (UnsupportedOperationException e) {
+            // Ignored
         }
         scriptCommands.clear();
     }
