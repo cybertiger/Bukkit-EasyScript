@@ -1,0 +1,245 @@
+<html>
+<head>
+<title>EasyScript for Bukkit</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<link rel="stylesheet" href="site.css" type="text/css"/>
+</head>
+<body>
+<div class="leftMenu">
+<div>
+<ul>
+<li><a href="#about">About</a></li>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#config">Configuration</a></li>
+<li><a href="#commands">Commands</a></li>
+<li><a href="#scripts">Scripts</a></li>
+<li><a href="#jsexamples">Javascript Examples</a></li>
+</ul>
+</div>
+</div>
+<div class="content">
+<div>
+<div id="logo">
+<div id="donate">
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post">
+<input type="hidden" name="cmd" value="_s-xclick">
+<input type="hidden" name="encrypted" value="-----BEGIN PKCS7-----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-----END PKCS7-----
+">
+<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+<img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+</form></div>
+<img src="images/logo.png" alt="EasyScript"/>
+</div>
+<h1 id="about">About</h1>
+<p>A Bukkit plugin to allow plugin development in various languages including support for command registration and handling all events.</p>
+<ul>
+<li>Support for multiple scripting languages.</li>
+<li>Ability to hook into <b>any</b> bukkit event.</li>
+<li>Support for registering bukkit command handlers.</li>
+<li>Support for autoreloading of script files when they change.</li>
+</ul>
+<p>Originally developed for <a href="http://www.dreamcraft.org">dreamcraft.org</a>.</p>
+<h1 id="installation">Installation</h1>
+<p>The plugin requires Java 1.6, and to support command registration CraftBukkit 1.4.7. Oracle's java 1.6 includes support for javascript, to support other languages (or to install a different javascript version) you'll need to modify the startup classpath of your server and add additional jar files to the classpath. Installation isn't quite as easy as I'd like, but I cannot ship third party code with my plugin for licensing reasons.</p>
+<h2>Downloads</h2>
+<ul>
+<li><a href="downloads/1.0/EasyScript.jar">EasyScript 1.0 for CraftBukkit 1.4.7-R1.0</a></li>
+<li><a href="downloads/1.0/RhinoScriptEngine.jar">RhinoScriptEngine 1.0</a></li>
+</ul>
+<h2>Java 1.6 with included Javascript support</h2>
+<p>Oracle's version of Java comes with a built in javascript engine, if you are using that it should just work. However if you are using Apple's version of Java then it may not be present (I don't own a Mac, and have not tested, if someone can let me know if it works or not I would appreciate it). Apple's JVM includes support for AppleScript, so you could try that.</p>
+<h2>Java 1.6 with updated Javascript support</h2>
+<p>The version of javascript shipped with Java 1.6 is known to be slow, also you will not be able to directly access plugin classes as it is not classloader aware. To update the javascript engine you need to download the latest version of Mozilla Rhino <a href="https://developer.mozilla.org/en-US/docs/Rhino">here</a>. Extract the zip file, and copy js.jar to your server directory. You will also need an implementation of ScriptEngine for Rhino, there is one <a href="downloads/1.0/RhinoScriptEngine.jar">here</a> (GPL2 License, source code available <a href="https://github.com/cybertiger/RhinoScriptEngine">here</a>). Place that also in your server's directory.</p>
+<p>Once you have both files in your server directory you need to modify your startup script to run craftbukkit with these jars in the classpath. Here is my script for doing so.</p>
+<div class="code"><pre>
+<span class="Comment">#!/bin/sh</span>
+<span class="Identifier">CLASSPATH</span>=craftbukkit-1.4.7-R1.0.jar
+
+<span class="Identifier">CLASSPATH</span>=<span class="Statement">&quot;</span><span class="PreProc">$CLASSPATH</span><span class="Constant">:js.jar:RhinoScriptEngine.jar</span><span class="Statement">&quot;</span>
+
+java <span class="Special">-classpath</span> <span class="PreProc">$CLASSPATH</span> <span class="Special">-Xmx2G</span> <span class="Special">-XX</span>:<span class="Identifier">MaxPermSize</span>=256m org.bukkit.craftbukkit.Main
+</pre></div>
+<p>Once you have done that, you'll need to set the language to <code>rhino-cyberiantiger</code> in <code>config.yml</code>, as I cannot override the Javascript engine shipped with Java.</p>
+<h2>Java 1.6 with Python support</h2>
+<p>Download Jython <a href="http://www.jython.org">here</a> and add it to your startup classpath for CraftBukkit, here is an example script.</p>
+<div class="code"><pre><span class="Comment">#!/bin/sh</span>
+<span class="Identifier">CLASSPATH</span>=craftbukkit-1.4.7-R1.0.jar
+
+<span class="Identifier">CLASSPATH</span>=<span class="Statement">&quot;</span><span class="PreProc">$CLASSPATH</span><span class="Constant">:jython-2.5.3.jar</span><span class="Statement">&quot;</span>
+
+java <span class="Special">-classpath</span> <span class="PreProc">$CLASSPATH</span> <span class="Special">-Xmx2G</span> <span class="Special">-XX</span>:<span class="Identifier">MaxPermSize</span>=256m org.bukkit.craftbukkit.Main</pre></div>
+<p>Once done, edit config.yml and set your language to <code>python</code>
+<h1 id="config">Configuration</h1>
+<p>The configuration file is fairly minimal and allows you to configure the scripting language to use as well as some library scripts to autoload, and directories which contain scripts to be executed with the <code>/script</code> command. Here is the default configuration.</p>
+<div class="code"><pre>
+<span class="Identifier">language</span><span class="Special">:</span> javascript
+<span class="Identifier">autoreload</span><span class="Special">:</span> <span class="Constant">true</span>
+<span class="Identifier">libraries</span><span class="Special">:</span>
+  <span class="Statement">- </span>library
+<span class="Identifier">scripts</span><span class="Special">:</span>
+  <span class="Statement">- </span>scripts
+</pre></div>
+<h2>language</h2>
+<p>The language you wish to write scripts in, Python (via Jython) and Javascript (via Mozilla Rhino) are known to work. There are many languages supported, howerver configuring them correctly maybe difficult, the plugin requires a ScriptingEngine which is capable of both compiling a script and invoking functions in it, which will rule out some languages (e.g. BeanShell does not allow script compilation). The best way to find languages which might work is a <a href="http://google.com/search?q=jsr223 languages">google search</a>.</p>
+<h2>autoreload</h2>
+<p>Whether to autoreload scripts when they have been edited. This is checked when a user executes <code>/script</code> or a script registered command or when a bukkit event is delivered to your script. For development purposes you will want this set to <code>true</code>. On a production server where you are not developing your scripts setting it to <code>false</code> will provide a small performance improvement.</p>
+<h2>libraries</h2>
+<p>A list of script files which are to be loaded on startup. This will search for a file in <code>plugins/EasyScript/&lt;name&gt;.&lt;suffix&gt;</code>. Where <code>&lt;name&gt;</code> is the name of the library and <code>&lt;suffix&gt;</code> is the file suffix for the scripting language, for example with javascript it is js, and with python it is py. The libraries are loaded in the order specified.</p>
+<h2>scripts</h2>
+<p>A list of directories containing script files, which is searched when a user executes <code>/script &lt;name&gt;</code> for a file called <code>&lt;name&gt;.&lt;suffix&gt;</code> the directories are relative to plugins/EasyScript, for example the default setting searches under plugins/EasyScript/scripts/.</p>
+<h1 id="commands">Commands</h1>
+<p>The plugin only ships with two commands, both are fairly self explanatory.</p>
+<h2><code>/scriptreload</code></h2>
+<h3>Permission: <code>easyscript.reload</code></h3>
+<p>Force a reload of all your scripts.</p>
+<h2><code>/script &lt;name&gt;</code></h2>
+<h3>Permission: <code>easyscript.script</code></h3>
+<p>Execute the script named <code>&lt;name&gt;</code>.</p>
+<h1 id="scripts">Scripts</h1>
+<p>This section concentrates on javascript examples. And needs to be written.</p>
+<h2>Variables</h2>
+<p>Bla bla bla, you get certain variables set for you</p>
+<h3>Library variables</h3>
+<h4>server</h4>
+Equivalent to getServer() in a plugin.
+<h4>log</h4>
+Equivalent to getLogger() in a plugin.
+<h4>plugin</h4>
+The easyscript plugin.
+<h3>Script variables</h3>
+<p>In addition to the variables available in library scripts, the following are available</p>
+<h4>sender</h4>
+The CommandSender.
+<h4>args</h4>
+Array of arguments to the script.
+<h4>player</h4>
+Set to the player if CommandSender is a Player.
+<h4>block</h4>
+Set to the command block if CommandSender is a BlockCommandSender.
+<h2>Plugin Functions</h2>
+<p>The plugin provides function to make it easy to add new commands and hook into bukkit events. These are also documented in the plugin javadocs <a href="javadoc/">here</a></p>
+<h3>void registerEvent(Class type, String function)</h3>
+<p>Listen for bukkit events with specified class, and pass them to the function in the script.</p>
+<h3>void registerEvent(Class type, EventPriority priority, String function)</h3>
+<p>Same as above, but allows you to specify an event priority.</p>
+<h3>void registerEvent(Class type, EventPrioirity priority, boolean ignoreCancelled, String function)</h3>
+<p>Same as above, but allows you to pass in an ignoreCancelled flag.</p>
+<h3>PluginCommand registerCommand(String name, String function)</h3>
+<p>Register a command handler, returns a PluginCommand with which you can set the Usage and Help on.</p>
+<h1 id="jsexamples">Javascript Examples</h1>
+<p>Here are some simple examples of what can be accomplished in javascript.</p>
+<h2>World Echo Script</h2>
+<p>Save the following as <code>worldecho.js</code> under <code>plugins/EasyScript/scripts/</code>, then execute it via <code>/script worldecho &lt;message&gt;</code>. You can use &amp; for Minecraft formatting codes.</p>
+<div class="code">
+<pre>
+<span class="Comment">// server = the Server.</span>
+<span class="Comment">// plugin = EasyScript plugin.</span>
+<span class="Comment">// log = EasyScript Logger.</span>
+<span class="Comment">// sender = the sender of the command.</span>
+<span class="Comment">// args = String[] of arguments.</span>
+<span class="Comment">// player = the player (if sent from a player) or null.</span>
+<span class="Comment">// block = the block (if sent from a command block) or null.</span>
+
+<span class="Identifier">var</span> world;
+
+<span class="Statement">if</span> (block) <span class="Identifier">{</span>
+    world = block.getLocation().getWorld();
+<span class="Identifier">}</span>
+
+<span class="Statement">if</span> (player) <span class="Identifier">{</span>
+    world = player.getWorld();
+<span class="Identifier">}</span>
+
+<span class="Statement">if</span> (world) <span class="Identifier">{</span>
+    <span class="Identifier">var</span> msg = args.join(<span class="Constant">' '</span>).replace(<span class="Constant">/&amp;/g</span>, <span class="Constant">'§'</span>);
+    <span class="Identifier">var</span> iter = world.getPlayers().iterator();
+
+    <span class="Statement">while</span> (iter.hasNext()) <span class="Identifier">{</span>
+        <span class="Identifier">var</span> p = iter.next();
+        <span class="Statement">if</span> (p.isOnline())
+            p.sendMessage(msg);
+    <span class="Identifier">}</span>
+<span class="Identifier">}</span>
+</pre>
+</div>
+<h2>Use blaze rods to throw fireballs</h2>
+<p>Save the following as <code>library.js</code> in <code>plugins/EasyScript/</code> will allow players to left click with a blaze rod to throw fireballs, </p>
+<div class="code">
+<pre>
+importPackage(org.bukkit)
+importPackage(org.bukkit.entity)
+importPackage(org.bukkit.inventory)
+importPackage(org.bukkit.event)
+importPackage(org.bukkit.event.player)
+importPackage(org.bukkit.event.block)
+importPackage(org.bukkit.event.entity)
+importPackage(org.bukkit.util)
+importPackage(org.bukkit.potion)
+
+<span class="Identifier">function</span> onPlayerInteract(e) <span class="Identifier">{</span>
+    <span class="Identifier">var</span> player = e.getPlayer();
+    <span class="Identifier">var</span> item = player.getItemInHand();
+    <span class="Statement">if</span> (e.getAction() == Action.LEFT_CLICK_BLOCK || e.getAction() == Action.LEFT_CLICK_AIR) <span class="Identifier">{</span>
+        <span class="Statement">if</span> (item.getType() == Material.BLAZE_ROD) <span class="Identifier">{</span>
+            log.info(<span class="Constant">&quot;Player left clicked with blaze rod.&quot;</span>);
+            <span class="Identifier">var</span> fb = player.getWorld().spawnEntity(player.getEyeLocation(), EntityType.SMALL_FIREBALL);
+            fb.setShooter(player);
+            <span class="Identifier">var</span> count = item.getAmount();
+            <span class="Statement">if</span> (count == 1) <span class="Identifier">{</span>
+                player.setItemInHand(<span class="Statement">new</span> ItemStack(Material.AIR, 0));
+            <span class="Identifier">}</span> <span class="Statement">else</span> <span class="Identifier">{</span>
+                item.setAmount(item.getAmount()-1);
+            <span class="Identifier">}</span>
+            e.setCancelled(<span class="Constant">true</span>);
+        <span class="Identifier">}</span>
+    <span class="Identifier">}</span>
+<span class="Identifier">}</span>
+
+plugin.registerEvent(PlayerInteractEvent, <span class="Constant">&quot;onPlayerInteract&quot;</span>);
+</pre>
+</div>
+<h2>Add a worldecho command</h2>
+<p>Save this as <code>library.js</code> in <code>plugins/EasyScript/</code> will add a server command <code>/worldecho &lt;message&gt;</code> with usage and help.</p>
+<div class="code">
+<pre>
+importPackage(org.bukkit)
+importPackage(org.bukkit.entity)
+importPackage(org.bukkit.inventory)
+importPackage(org.bukkit.event)
+importPackage(org.bukkit.event.player)
+importPackage(org.bukkit.event.block)
+importPackage(org.bukkit.event.entity)
+importPackage(org.bukkit.util)
+importPackage(org.bukkit.potion)
+
+<span class="Identifier">function</span> worldecho(sender, cmd, args) <span class="Identifier">{</span>
+    <span class="Statement">if</span> (args.length == 0)
+        <span class="Statement">return</span> <span class="Constant">false</span>;
+    <span class="Identifier">var</span> world;
+    <span class="Statement">if</span> (sender <span class="Statement">instanceof</span> Player) <span class="Identifier">{</span>
+        world = sender.getWorld();
+    <span class="Identifier">}</span> <span class="Statement">else</span> <span class="Statement">if</span> (sender <span class="Statement">instanceof</span> BlockCommandSender) <span class="Identifier">{</span>
+        world = sender.getBlock().getWorld();
+    <span class="Identifier">}</span>
+    <span class="Statement">if</span> (world) <span class="Identifier">{</span>
+        <span class="Identifier">var</span> msg = args.join(<span class="Constant">' '</span>).replace(<span class="Constant">/&amp;/g</span>, <span class="Constant">'§'</span>);
+        <span class="Identifier">var</span> iter = world.getPlayers().iterator();
+
+        <span class="Statement">while</span> (iter.hasNext()) <span class="Identifier">{</span>
+            <span class="Identifier">var</span> p = iter.next();
+            <span class="Statement">if</span> (p.isOnline())
+                p.sendMessage(msg);
+        <span class="Identifier">}</span>
+    <span class="Identifier">}</span>
+    <span class="Statement">return</span> <span class="Constant">true</span>;
+<span class="Identifier">}</span>
+
+<span class="Identifier">var</span> worldEcho = plugin.registerCommand(<span class="Constant">&quot;worldecho&quot;</span>, <span class="Constant">&quot;worldecho&quot;</span>);
+worldEcho.setUsage(<span class="Constant">&quot;/&lt;command&gt; &lt;message&gt;&quot;</span>);
+worldEcho.setDescription(<span class="Constant">&quot;Echo a string to the local world.&quot;</span>);
+</pre>
+</div>
+</div>
+</div>
+</body>
+</html>

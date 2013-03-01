@@ -1,0 +1,114 @@
+body {
+    background-color: #000000;
+    color: #ffffff;
+}
+a:link {
+    color: #00ff00;
+}
+a:visited {
+    color: #009900;
+}
+/* VIM Syntax Colors */
+.Special { color: #ff40ff; }
+.Constant { color: #ff6060; }
+.PreProc { color: #ff40ff; }
+.Statement { color: #ffff00; }
+.Identifier { color: #00ffff; }
+.Comment { color: #8080ff; }
+
+div.code {
+    border: 2px dashed;
+    border-color: #00ff00;
+}
+
+.leftmenu {
+    position: fixed;
+    padding: 32px;
+    width: 200px;
+    color: #00ff00;
+}
+.leftmenu div {
+    border: 2px solid;
+    border-color: #00ff00;
+    margin-bottom: 16px;
+}
+.leftmenu ul {
+    margin: 4px;
+    padding: 0px;
+    list-style-type: none;
+}
+.leftmenu li {
+    margin: 4px;
+    text-align: center;
+    padding: 2px;
+}
+.leftmenu li:hover {
+    background-color: #00ff00;
+}
+.leftmenu li:hover a {
+    color: #000000;
+    background: #00ff00;
+}
+.content {
+    display: compact;
+    margin: 32px;
+    margin-left: 264;
+    padding: 32px;
+}
+.content div {
+/*    border: 2px dashed;
+    border-color: #00ff00; */
+    margin-bottom: 32px;
+    padding: 8px;
+}
+
+.content h1 {
+    margin: 0px;
+    text-align: center;
+    padding: 4px;
+    border: 2px solid;
+    border-color: #00ff00;
+    color: #00ff00;
+}
+.content h2 {
+    margin: 0px;
+    text-align: left;
+    padding: 4px;
+    border: 2px solid;
+    border-color: #00ff00;
+    color: #00ff00;
+}
+#donate {
+    float: right;
+    border: none;
+    border-color: transparent;
+    margin-bottom: 0px;
+    padding: 0px;
+}
+
+#logo {
+    margin: 0 auto;
+    text-align: center;
+    border: none;
+    border-color: transparent;
+    margin-bottom: 8px;
+    padding: 4px;
+    border: 2px solid;
+    border-color: #00ff00;
+}
+
+#logo div {
+    padding: 4px;
+}
+
+@media print {
+.leftmenu {
+    display: none;
+    width: 0px;
+}
+.content {
+    display: compact;
+    margin: 32px;
+    padding: 32px;
+}
+}

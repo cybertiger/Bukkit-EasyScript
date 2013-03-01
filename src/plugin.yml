@@ -1,9 +1,7 @@
 name: "EasyScript"
 version: "1.0"
 main: "org.cyberiantiger.minecraft.easyscript.EasyScript"
-load: POSTWORLD
-softdepend:
-  - Instances
+website: "http://cyberiantiger.org/EasyScript/"
 commands:
   script:
     description: Execute a script

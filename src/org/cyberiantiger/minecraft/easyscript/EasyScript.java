@@ -159,12 +159,21 @@ public class EasyScript extends JavaPlugin implements Listener {
         scriptCommands.clear();
     }
 
+    /**
+     * Reload all scripts.
+     */
     public void reload() {
         // Only way to unregister events.
         getServer().getPluginManager().disablePlugin(this);
         getServer().getPluginManager().enablePlugin(this);
     }
 
+    /**
+     * Register a new command.
+     * @param cmd The name of the command.
+     * @param function The function in a library file to call.
+     * @return The new command.
+     */
     public PluginCommand registerCommand(String cmd, final String function) {
         final PluginCommand command = registration.registerCommand(this, cmd);
         if (command != null) {
@@ -195,14 +204,39 @@ public class EasyScript extends JavaPlugin implements Listener {
         return command;
     }
 
+    /**
+     * Register an event handler.
+     *
+     * Uses EventPriority.NORMAL and ignores cancelled events.
+     *
+     * @param eventClass The event to register the handler for.
+     * @param function The function to call to handle this event.
+     */
     public void registerEvent(Class<? extends Event> eventClass, String function) {
         registerEvent(eventClass, EventPriority.NORMAL, function);
     }
 
+    /**
+     * Register an event handler.
+     *
+     * Ignores cancelled events.
+     *
+     * @param eventClass The event to register the handler for.
+     * @param priority The priority of the event handler.
+     * @param function The function to call to handle this event.
+     */
     public void registerEvent(Class<? extends Event> eventClass, EventPriority priority, String function) {
-        registerEvent(eventClass, priority, false, function);
+        registerEvent(eventClass, priority, true, function);
     }
 
+    /**
+     * Register an event handler.
+     *
+     * @param eventClass The event to register the handler for.
+     * @param priority The priority of the event handler.
+     * @param ignoreCancelled Whether the handler should be passed cancelled events.
+     * @param function The function to call to handle this event.
+     */
     public void registerEvent(Class<? extends Event> eventClass, EventPriority priority, boolean ignoreCancelled, final String function) {
         getServer().getPluginManager().registerEvent(eventClass, this, priority, new EventExecutor() {
 
@@ -313,6 +347,7 @@ public class EasyScript extends JavaPlugin implements Listener {
                 return false;
             }
             reload();
+            sender.sendMessage("Scripts reloaded.");
             return true;
         }
         return false;

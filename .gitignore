@@ -11,8 +11,9 @@ lib/*
 nbproject/*
 dist/*
 
-# Netbeans build.xml
+# Netbeans build.xml.
 build.xml
 
-# Downloadable jar files.
+# Downloadable jar files and javadocs.
 site/downloads/*
+site/javadoc/*
