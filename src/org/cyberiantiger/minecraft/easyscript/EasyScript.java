@@ -21,7 +21,9 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -45,13 +47,13 @@ public class EasyScript extends JavaPlugin implements Listener {
     private Map<File, Long> libraries;
     private Map<String, ScriptHolder> scripts;
     private List<File> scriptDirectories;
-    private Map<String, ScriptCommand> scriptCommands;
+    private Map<String, PluginCommand> scriptCommands;
 
     public EasyScript() {
         this.libraries = new HashMap<File, Long>();
         this.scripts = new HashMap<String, ScriptHolder>();
         this.scriptDirectories = new ArrayList<File>();
-        this.scriptCommands = new HashMap<String, ScriptCommand>();
+        this.scriptCommands = new HashMap<String, PluginCommand>();
     }
 
     @Override
@@ -110,10 +112,13 @@ public class EasyScript extends JavaPlugin implements Listener {
                         } catch (FileNotFoundException ex) {
                             getLogger().log(Level.SEVERE, null, ex);
                         }
+                        found = true;
                         break;
                     }
                 }
-                if (!found) getLogger().warning("Failed to find library file : " + s);
+                if (!found) {
+                    getLogger().warning("Failed to find library file : " + s);
+                }
             }
             for (String s : config.getStringList("scripts")) {
                 File scriptDirectory = new File(getDataFolder(), s);
@@ -123,7 +128,7 @@ public class EasyScript extends JavaPlugin implements Listener {
 
                 this.scriptDirectories.add(scriptDirectory);
             }
-
+            registration.updateHelp(getServer());
         } finally {
             Thread.currentThread().setContextClassLoader(oldClassLoader);
         }
@@ -139,8 +144,14 @@ public class EasyScript extends JavaPlugin implements Listener {
         this.libraries.clear();
         this.scripts.clear();
         this.scriptDirectories.clear();
-        for (ScriptCommand command : scriptCommands.values()) {
+        for (PluginCommand command : scriptCommands.values()) {
             registration.unregisterCommand(getServer(), command);
+        }
+        try {
+            // Remove any script registered commands from the help.
+            registration.updateHelp(getServer());
+        } catch (UnsupportedOperationException e) {
+            // Ignored
         }
         scriptCommands.clear();
     }
@@ -150,11 +161,34 @@ public class EasyScript extends JavaPlugin implements Listener {
         getServer().getPluginManager().disablePlugin(this);
         getServer().getPluginManager().enablePlugin(this);
     }
+    
+    public PluginCommand registerCommand(String cmd, final String function) {
+        final PluginCommand command = registration.registerCommand(this, cmd);
+        if (command != null) {
+            scriptCommands.put(cmd, command);
+            command.setExecutor(new CommandExecutor() {
 
-    public ScriptCommand registerCommand(String cmd, String function) {
-        ScriptCommand command = new ScriptCommand(cmd, function);
-        registration.registerCommand(getServer(), command);
-        scriptCommands.put(cmd, command);
+                public boolean onCommand(CommandSender cs, Command cmnd, String string, String[] strings) {
+                    if (!isEnabled()) {
+                        return false;
+                    }
+                    if (!checkLibraries()) {
+                        return false;
+                    }
+                    if (function == null) {
+                        return false;
+                    }
+                    try {
+                        return Boolean.TRUE == invocable.invokeFunction(function, cs, string, strings);
+                    } catch (ScriptException ex) {
+                        getLogger().log(Level.SEVERE, ex.getMessage());
+                    } catch (NoSuchMethodException ex) {
+                        getLogger().log(Level.SEVERE, ex.getMessage());
+                    }
+                    return false;
+                }
+            });
+        }
         return command;
     }
 
@@ -255,14 +289,15 @@ public class EasyScript extends JavaPlugin implements Listener {
             if ((sender instanceof BlockCommandSender)) {
                 context.setAttribute("block", ((BlockCommandSender) sender).getBlock(), 50);
             } else {
-                context.setAttribute("block", null, 50);
+                context.setAttribute("block", null, EasyScriptContext.SCRIPT_SCOPE);
             }
             if ((sender instanceof Player)) {
-                context.setAttribute("player", sender, 50);
+                context.setAttribute("player", sender, EasyScriptContext.SCRIPT_SCOPE);
             } else {
-                context.setAttribute("player", null, 50);
+                context.setAttribute("player", null, EasyScriptContext.SCRIPT_SCOPE);
             }
-            context.setAttribute("args", shiftArgs, 50);
+            context.setAttribute("sender", sender, EasyScriptContext.SCRIPT_SCOPE);
+            context.setAttribute("args", shiftArgs, EasyScriptContext.SCRIPT_SCOPE);
             try {
                 holder.getScript().eval(context);
             } catch (ScriptException ex) {
@@ -428,50 +463,6 @@ public class EasyScript extends JavaPlugin implements Listener {
 
         public File getSource() {
             return this.source;
-        }
-    }
-
-    public final class ScriptCommand extends Command {
-
-        private final String function;
-
-        public ScriptCommand(String name, String function) {
-            super(name);
-            this.function = function;
-        }
-
-        public ScriptCommand(String name, String description, String usage, List<String> aliases, String function) {
-            super(name, description, usage, aliases);
-            this.function = function;
-        }
-
-        @Override
-        public boolean execute(CommandSender cs, String string, String[] strings) {
-            if (!isEnabled()) {
-                return false;
-            }
-            if (!checkLibraries()) {
-                return false;
-            }
-            if (function == null) {
-                return false;
-            }
-            try {
-                Object value = invocable.invokeFunction(function, cs, string, strings);
-                if (Boolean.TRUE != value) {
-                    cs.sendMessage(getUsage());
-                }
-                return true;
-            } catch (ScriptException ex) {
-                getLogger().log(Level.SEVERE, ex.getMessage());
-            } catch (NoSuchMethodException ex) {
-                getLogger().log(Level.SEVERE, ex.getMessage());
-            }
-            return false;
-        }
-
-        public String getFunction() {
-            return function;
         }
     }
 }

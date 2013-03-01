@@ -6,7 +6,8 @@
 package org.cyberiantiger.minecraft.easyscript.unsafe;
 
 import org.bukkit.Server;
-import org.cyberiantiger.minecraft.easyscript.EasyScript.ScriptCommand;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.plugin.Plugin;
 
 /**
  *
@@ -14,12 +15,18 @@ import org.cyberiantiger.minecraft.easyscript.EasyScript.ScriptCommand;
  */
 public class DummyCommandRegistration implements CommandRegistration {
 
-    public void registerCommand(Server server, ScriptCommand command) {
+    public PluginCommand registerCommand(Plugin plugin, String command) {
         throw new UnsupportedOperationException("Command registration is only supported in CB1.4.7");
     }
 
-    public void unregisterCommand(Server server, ScriptCommand command) {
+    public void unregisterCommand(Server server, PluginCommand command) {
         throw new UnsupportedOperationException("Command registration is only supported in CB1.4.7");
     }
+
+    public void updateHelp(Server server) {
+        throw new UnsupportedOperationException("Updating help is only supported in CD1.4.7");
+    }
+
+
 
 }

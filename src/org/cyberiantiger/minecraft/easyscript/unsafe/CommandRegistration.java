@@ -6,13 +6,15 @@
 package org.cyberiantiger.minecraft.easyscript.unsafe;
 
 import org.bukkit.Server;
-import org.cyberiantiger.minecraft.easyscript.EasyScript.ScriptCommand;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.plugin.Plugin;
 
 /**
  *
  * @author antony
  */
 public interface CommandRegistration {
-    public void registerCommand(Server server, ScriptCommand command);
-    public void unregisterCommand(Server server, ScriptCommand command);
+    public PluginCommand registerCommand(Plugin plugin, String command);
+    public void unregisterCommand(Server server, PluginCommand command);
+    public void updateHelp(Server server);
 }
