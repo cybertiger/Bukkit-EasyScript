@@ -261,6 +261,82 @@ importPackage(org.bukkit.potion)
 plugin.registerEvent(CreatureSpawnEvent, <span class="Constant">&quot;onCreatureSpawn&quot;</span>);
 </pre>
 </div>
+<h2 id="witherboss">Award WitherBoss drops to the player who does most damage.</h2>
+<p>Fairly long winded example of awarding drops to the player who does the most damage to a wither boss.</p>
+<div class="code">
+<pre>
+importPackage(org.bukkit)
+importPackage(org.bukkit.entity)
+importPackage(org.bukkit.inventory)
+importPackage(org.bukkit.event)
+importPackage(org.bukkit.event.player)
+importPackage(org.bukkit.event.block)
+importPackage(org.bukkit.event.entity)
+importPackage(org.bukkit.util)
+importPackage(org.bukkit.potion)
+
+<span class="Identifier">var</span> witherDamageMap = <span class="Statement">new</span> java.util.WeakHashMap();
+
+<span class="Identifier">function</span> onEntityDamageByEntity(e) <span class="Identifier">{</span>
+    <span class="Identifier">var</span> player = e.getDamager();
+    <span class="Statement">if</span> (e.getEntityType() == EntityType.WITHER &amp;&amp;
+        player.getType() == EntityType.PLAYER) <span class="Identifier">{</span>
+        <span class="Identifier">var</span> wither = e.getEntity();
+        <span class="Identifier">var</span> damageMap = witherDamageMap.get(wither);
+        <span class="Statement">if</span> (damageMap == <span class="Statement">null</span>) <span class="Identifier">{</span>
+            damageMap = <span class="Statement">new</span> java.util.WeakHashMap();
+            witherDamageMap.put(wither, damageMap);
+        <span class="Identifier">}</span>
+        <span class="Identifier">var</span> damage = e.getDamage();
+        <span class="Statement">if</span> (damageMap.containsKey(player))
+            damage += damageMap.get(player);
+        damageMap.put(player, damage);
+    <span class="Identifier">}</span>
+<span class="Identifier">}</span>
+
+<span class="Identifier">function</span> onEntityDeath(e) <span class="Identifier">{</span>
+    <span class="Statement">if</span> (e.getEntityType() == EntityType.WITHER) <span class="Identifier">{</span>
+        <span class="Identifier">var</span> wither = e.getEntity();
+        <span class="Identifier">var</span> damageMap = witherDamageMap.get(wither);
+        <span class="Statement">if</span> (damageMap == <span class="Statement">null</span>) <span class="Identifier">{</span>
+            <span class="Statement">return</span>; <span class="Comment">// Do normal drops.</span>
+        <span class="Identifier">}</span>
+        <span class="Identifier">var</span> winner = <span class="Statement">null</span>;
+        <span class="Identifier">var</span> maxDamage = 0;
+        <span class="Identifier">var</span> i = damageMap.entrySet().iterator();
+        <span class="Statement">while</span> (i.hasNext()) <span class="Identifier">{</span>
+            <span class="Identifier">var</span> entry = i.next();
+            <span class="Comment">// Does not deal with ties.</span>
+            <span class="Statement">if</span> (entry.getValue() &gt; maxDamage) <span class="Identifier">{</span>
+                winner = entry.getKey();
+                maxDamage = entry.getValue();
+            <span class="Identifier">}</span>
+        <span class="Identifier">}</span>
+        <span class="Statement">if</span> (!winner)
+            <span class="Statement">return</span>; <span class="Comment">// Do normal drops.</span>
+        <span class="Identifier">var</span> drops = <span class="Statement">new</span> java.util.ArrayList(e.getDrops());
+        e.getDrops().clear();
+        i = damageMap.entrySet().iterator();
+        <span class="Statement">while</span> (i.hasNext()) <span class="Identifier">{</span>
+            <span class="Identifier">var</span> entry = i.next();
+            <span class="Statement">if</span> (entry.getKey() == winner) <span class="Identifier">{</span>
+                winner.sendMessage(<span class="Constant">&quot;Congratulations, you did the most damage!&quot;</span>);
+            <span class="Identifier">}</span> <span class="Statement">else</span> <span class="Identifier">{</span>
+                entry.getKey().sendMessage(winner.getDisplayName() + <span class="Constant">&quot; dealt the most damage!&quot;</span>);
+            <span class="Identifier">}</span>
+        <span class="Identifier">}</span>
+        <span class="Comment">// Try to put items in the winner's inventory, if that fails</span>
+        <span class="Comment">// Add them back to the wither's drops.</span>
+        <span class="Statement">for</span> (i = 0; i &lt; drops.size(); i++) <span class="Identifier">{</span>
+            e.getDrops().addAll(winner.getInventory().addItem(drops.get(i)).values());
+        <span class="Identifier">}</span>
+    <span class="Identifier">}</span>
+<span class="Identifier">}</span>
+
+plugin.registerEvent(EntityDamageByEntityEvent, <span class="Constant">&quot;onEntityDamageByEntity&quot;</span>);
+plugin.registerEvent(EntityDeathEvent, <span class="Constant">&quot;onEntityDeath&quot;</span>);
+</pre>
+</div>
 </div>
 </div>
 </body>
