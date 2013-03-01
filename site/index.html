@@ -239,6 +239,28 @@ worldEcho.setUsage(<span class="Constant">&quot;/&lt;command&gt; &lt;message&gt;
 worldEcho.setDescription(<span class="Constant">&quot;Echo a string to the local world.&quot;</span>);
 </pre>
 </div>
+<h2>Disable Monster Spawners</h2>
+<p>Quick hack to stop monster spawners from working server wide.</p>
+<div class="code">
+<pre>
+importPackage(org.bukkit)
+importPackage(org.bukkit.entity)
+importPackage(org.bukkit.inventory)
+importPackage(org.bukkit.event)
+importPackage(org.bukkit.event.player)
+importPackage(org.bukkit.event.block)
+importPackage(org.bukkit.event.entity)
+importPackage(org.bukkit.util)
+importPackage(org.bukkit.potion)
+
+<span class="Identifier">function</span> onCreatureSpawn(e) <span class="Identifier">{</span>
+    <span class="Statement">if</span> (e.getSpawnReason() == CreatureSpawnEvent.SpawnReason.SPAWNER)
+        e.setCancelled(<span class="Constant">true</span>);
+<span class="Identifier">}</span>
+
+plugin.registerEvent(CreatureSpawnEvent, <span class="Constant">&quot;onCreatureSpawn&quot;</span>);
+</pre>
+</div>
 </div>
 </div>
 </body>
