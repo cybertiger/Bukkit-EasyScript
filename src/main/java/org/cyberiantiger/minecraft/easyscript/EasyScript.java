@@ -19,6 +19,7 @@ import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import org.bukkit.World;
 import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -34,8 +35,12 @@ import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistration;
 import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistrationFactory;
+import org.yaml.snakeyaml.Yaml;
 
 public class EasyScript extends JavaPlugin implements Listener {
+    public static final String SERVER_CONFIG = "server.yml";
+    public static final String WORLD_CONFIG_DIRECTORY = "world";
+    public static final String PLAYER_CONFIG_DIRECTORY = "player";
 
     private static final CommandRegistration registration =
             CommandRegistrationFactory.createCommandRegistration();
@@ -48,6 +53,9 @@ public class EasyScript extends JavaPlugin implements Listener {
     private Map<String, ScriptHolder> scripts;
     private List<File> scriptDirectories;
     private Map<String, PluginCommand> scriptCommands;
+    private Config serverConfig = new Config(this, new File(getDataFolder(), SERVER_CONFIG));
+    private Map<String, Config> worldConfig = new HashMap<String, Config>();
+    private Map<String, Config> playerConfig = new HashMap<String, Config>();
 
     public EasyScript() {
         this.libraries = new HashMap<File, Long>();
@@ -55,7 +63,7 @@ public class EasyScript extends JavaPlugin implements Listener {
         this.scriptDirectories = new ArrayList<File>();
         this.scriptCommands = new HashMap<String, PluginCommand>();
     }
-
+    
     @Override
     public void onEnable() {
         super.onEnable();
@@ -136,11 +144,22 @@ public class EasyScript extends JavaPlugin implements Listener {
         } finally {
             Thread.currentThread().setContextClassLoader(oldClassLoader);
         }
+        serverConfig.load();
     }
 
     @Override
     public void onDisable() {
         super.onDisable();
+        serverConfig.save();
+        serverConfig.clear();
+        for (Config c : worldConfig.values()) {
+            c.save();
+        }
+        worldConfig.clear();
+        for (Config c : playerConfig.values()) {
+            c.save();
+        }
+        playerConfig.clear();
         this.engine = null;
         this.invocable = null;
         this.compilable = null;
@@ -165,6 +184,8 @@ public class EasyScript extends JavaPlugin implements Listener {
     public void reload() {
         // Only way to unregister events.
         getServer().getPluginManager().disablePlugin(this);
+        // Force reloading the configuration.
+        reloadConfig();
         getServer().getPluginManager().enablePlugin(this);
     }
 
@@ -257,6 +278,45 @@ public class EasyScript extends JavaPlugin implements Listener {
             }
         }, this, ignoreCancelled);
     }
+
+    public File getWorldConfigDirectory() {
+        return new File(getDataFolder(), WORLD_CONFIG_DIRECTORY);
+    }
+
+    public File getPlayerConfigDirectory() {
+        return new File(getDataFolder(), PLAYER_CONFIG_DIRECTORY);
+    }
+
+    public Config getServerConfig() {
+        return serverConfig;
+    }
+
+    public Config getWorldConfig(World world) {
+        return getWorldConfig(world.getName());
+    }
+
+    public Config getWorldConfig(String world) {
+        Config config = worldConfig.get(world);
+        if (config == null) {
+            config = new Config(this, new File(getWorldConfigDirectory(), world + ".yml"));
+            worldConfig.put(world, config);
+        }
+        return config;
+    }
+
+    public Config getPlayerConfig(Player player) {
+        return getPlayerConfig(player.getName());
+    }
+
+    public Config getPlayerConfig(String player) {
+        Config config = playerConfig.get(player);
+        if (config == null) {
+            config = new Config(this, new File(getPlayerConfigDirectory(), player + ".yml"));
+            playerConfig.put(player, config);
+        }
+        return config;
+    }
+
 
     private boolean checkLibraries() {
         if (!this.autoreload) {
