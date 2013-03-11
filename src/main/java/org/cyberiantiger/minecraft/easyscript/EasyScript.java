@@ -179,6 +179,25 @@ public class EasyScript extends JavaPlugin implements Listener {
     }
 
     /**
+     * Invoke a function in EasyScript's configured libraries.
+     * 
+     * This is intended for use by other plugins, that require script support
+     * and do not wish to deal with the scripting API.
+     * 
+     * @param function name of the function
+     * @param args arguments
+     * @return value returned from script
+     * @throws ScriptException
+     * @throws NoSuchMethodException 
+     */
+    public Object invokeLibraryFunction(String function, Object... args) throws ScriptException, NoSuchMethodException {
+        // Ignore return value, unlike commands and events we can still attempt
+        // to invoke the function after a reload.
+        checkLibraries();
+        return invocable.invokeFunction(function, args);
+    }
+
+    /**
      * Reload all scripts.
      */
     public void reload() {
