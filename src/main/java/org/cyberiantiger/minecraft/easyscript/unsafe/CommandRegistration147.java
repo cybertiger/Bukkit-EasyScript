@@ -6,7 +6,6 @@ package org.cyberiantiger.minecraft.easyscript.unsafe;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Collection;
 import java.util.Iterator;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
@@ -56,7 +55,7 @@ public class CommandRegistration147 implements CommandRegistration {
         command.unregister(map);
         // If only it was that easy, thankfully SimpleCommandMap leaks a
         // mutable reference to it's private hashmap.
-        Iterator i = map.getCommands().iterator();
+        Iterator<Command> i = map.getCommands().iterator();
         while (i.hasNext()) {
             if (i.next() == command) {
                 i.remove();
