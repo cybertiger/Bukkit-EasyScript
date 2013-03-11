@@ -17,3 +17,6 @@ build.xml
 # Downloadable jar files and javadocs.
 site/downloads/*
 site/javadoc/*
+
+# Maven target directory
+target/*
