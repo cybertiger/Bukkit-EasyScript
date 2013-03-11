@@ -262,7 +262,7 @@ public class EasyScript extends JavaPlugin implements Listener {
         if (!this.autoreload) {
             return true;
         }
-        for (Map.Entry e : this.libraries.entrySet()) {
+        for (Map.Entry<File, Long> e : this.libraries.entrySet()) {
             if (((File) e.getKey()).lastModified() > ((Long) e.getValue()).longValue()) {
                 reload();
                 return false;
@@ -272,7 +272,7 @@ public class EasyScript extends JavaPlugin implements Listener {
     }
 
     private ScriptHolder getScript(String name) {
-        ScriptHolder cached = (ScriptHolder) this.scripts.get(name);
+        ScriptHolder cached = this.scripts.get(name);
 
         if (cached != null) {
             if (this.autoreload) {
@@ -387,7 +387,7 @@ public class EasyScript extends JavaPlugin implements Listener {
             implements ScriptContext {
 
         public static final int SCRIPT_SCOPE = 50;
-        private static final List<Integer> SCOPES = new ArrayList(3);
+        private static final List<Integer> SCOPES = new ArrayList<Integer>(3);
         private final ScriptContext parent;
         private Bindings bindings;
 

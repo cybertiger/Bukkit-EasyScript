@@ -5,7 +5,6 @@
 
 package org.cyberiantiger.minecraft.easyscript.unsafe;
 
-import java.util.Collection;
 import org.bukkit.Server;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
