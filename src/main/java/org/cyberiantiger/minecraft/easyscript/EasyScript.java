@@ -35,7 +35,6 @@ import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistration;
 import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistrationFactory;
-import org.yaml.snakeyaml.Yaml;
 
 public class EasyScript extends JavaPlugin implements Listener {
     public static final String SERVER_CONFIG = "server.yml";
@@ -319,6 +318,7 @@ public class EasyScript extends JavaPlugin implements Listener {
         Config config = worldConfig.get(world);
         if (config == null) {
             config = new Config(this, new File(getWorldConfigDirectory(), world + ".yml"));
+            config.load();
             worldConfig.put(world, config);
         }
         return config;
@@ -332,6 +332,7 @@ public class EasyScript extends JavaPlugin implements Listener {
         Config config = playerConfig.get(player);
         if (config == null) {
             config = new Config(this, new File(getPlayerConfigDirectory(), player + ".yml"));
+            config.load();
             playerConfig.put(player, config);
         }
         return config;
