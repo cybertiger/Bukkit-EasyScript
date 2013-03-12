@@ -53,7 +53,7 @@ public class EasyScript extends JavaPlugin implements Listener {
     private Map<String, ScriptHolder> scripts;
     private List<File> scriptDirectories;
     private Map<String, PluginCommand> scriptCommands;
-    private Config serverConfig = new Config(this, new File(getDataFolder(), SERVER_CONFIG));
+    private Config serverConfig;
     private Map<String, Config> worldConfig = new HashMap<String, Config>();
     private Map<String, Config> playerConfig = new HashMap<String, Config>();
 
@@ -144,6 +144,7 @@ public class EasyScript extends JavaPlugin implements Listener {
         } finally {
             Thread.currentThread().setContextClassLoader(oldClassLoader);
         }
+        serverConfig = new Config(this, new File(getDataFolder(), SERVER_CONFIG));
         serverConfig.load();
     }
 
@@ -151,7 +152,7 @@ public class EasyScript extends JavaPlugin implements Listener {
     public void onDisable() {
         super.onDisable();
         serverConfig.save();
-        serverConfig.clear();
+        serverConfig = null;
         for (Config c : worldConfig.values()) {
             c.save();
         }
