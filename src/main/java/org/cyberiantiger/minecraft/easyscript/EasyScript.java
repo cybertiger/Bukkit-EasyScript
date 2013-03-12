@@ -144,7 +144,6 @@ public class EasyScript extends JavaPlugin implements Listener {
             Thread.currentThread().setContextClassLoader(oldClassLoader);
         }
         serverConfig = new Config(this, new File(getDataFolder(), SERVER_CONFIG));
-        serverConfig.load();
     }
 
     @Override
@@ -318,7 +317,6 @@ public class EasyScript extends JavaPlugin implements Listener {
         Config config = worldConfig.get(world);
         if (config == null) {
             config = new Config(this, new File(getWorldConfigDirectory(), world + ".yml"));
-            config.load();
             worldConfig.put(world, config);
         }
         return config;
@@ -332,7 +330,6 @@ public class EasyScript extends JavaPlugin implements Listener {
         Config config = playerConfig.get(player);
         if (config == null) {
             config = new Config(this, new File(getPlayerConfigDirectory(), player + ".yml"));
-            config.load();
             playerConfig.put(player, config);
         }
         return config;

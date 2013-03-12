@@ -19,6 +19,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
 /**
@@ -32,11 +33,18 @@ import org.bukkit.util.Vector;
 public class Config implements Configuration {
     private final File file;
     private YamlConfiguration config = new YamlConfiguration();
-    private final EasyScript plugin;
+    private final JavaPlugin plugin;
 
-    public Config(EasyScript plugin, File file) {
+    public Config(JavaPlugin plugin, File file) {
+        this(plugin, file, true);
+    }
+
+    public Config(JavaPlugin plugin, File file, boolean load) {
         this.plugin = plugin;
         this.file = file;
+        if (load) {
+            load();
+        }
     }
 
     public void clear() {
