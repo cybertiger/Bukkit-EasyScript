@@ -27,14 +27,17 @@ final class ScriptEventExecutor implements EventExecutor, Listener {
     }
 
     public void execute(Listener l, Event event) throws EventException {
-        try {
-            plugin.invokeLibraryFunction(function, event);
-        } catch (ScriptException ex) {
-            plugin.getLogger().log(Level.WARNING, null, ex);
-        } catch (NoSuchMethodException ex) {
-            plugin.getLogger().log(Level.WARNING, null, ex);
-        } catch (RuntimeException ex) {
-            plugin.getLogger().log(Level.WARNING, null, ex);
+        // Patch up buggy bukkit.
+        if (eventType.isInstance(event)) {
+            try {
+                plugin.invokeLibraryFunction(function, event);
+            } catch (ScriptException ex) {
+                plugin.getLogger().log(Level.WARNING, null, ex);
+            } catch (NoSuchMethodException ex) {
+                plugin.getLogger().log(Level.WARNING, null, ex);
+            } catch (RuntimeException ex) {
+                plugin.getLogger().log(Level.WARNING, null, ex);
+            }
         }
     }
     
