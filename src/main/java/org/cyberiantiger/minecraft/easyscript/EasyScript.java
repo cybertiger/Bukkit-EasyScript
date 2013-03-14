@@ -4,14 +4,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
-import javax.script.Bindings;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
 import javax.script.Invocable;
@@ -22,21 +21,19 @@ import javax.script.ScriptException;
 import org.bukkit.World;
 import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
-import org.bukkit.event.EventException;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
-import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistration;
 import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistrationFactory;
 
-public class EasyScript extends JavaPlugin implements Listener {
+public class EasyScript extends JavaPlugin {
     public static final String SERVER_CONFIG = "server.yml";
     public static final String WORLD_CONFIG_DIRECTORY = "world";
     public static final String PLAYER_CONFIG_DIRECTORY = "player";
@@ -55,6 +52,7 @@ public class EasyScript extends JavaPlugin implements Listener {
     private Config serverConfig;
     private Map<String, Config> worldConfig = new HashMap<String, Config>();
     private Map<String, Config> playerConfig = new HashMap<String, Config>();
+    private final List<ScriptEventExecutor> registeredEventExecutors = new ArrayList<ScriptEventExecutor>();
 
     public EasyScript() {
         this.libraries = new HashMap<File, Long>();
@@ -66,10 +64,31 @@ public class EasyScript extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         super.onEnable();
+        saveDefaultConfig();
+        serverConfig = new Config(this, new File(getDataFolder(), SERVER_CONFIG));
+        enableEngine();
+    }
+
+    @Override
+    public void onDisable() {
+        super.onDisable();
+        disableEngine();
+        serverConfig.save();
+        serverConfig = null;
+        for (Config c : worldConfig.values()) {
+            c.save();
+        }
+        worldConfig.clear();
+        for (Config c : playerConfig.values()) {
+            c.save();
+        }
+        playerConfig.clear();
+    }
+
+    private void enableEngine() {
         ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             Thread.currentThread().setContextClassLoader(EasyScript.class.getClassLoader());
-            saveDefaultConfig();
             FileConfiguration config = getConfig();
             ScriptEngineManager manager = new ScriptEngineManager(EasyScript.class.getClassLoader());
             this.autoreload = config.getBoolean("autoreload");
@@ -117,6 +136,7 @@ public class EasyScript extends JavaPlugin implements Listener {
                         } catch (ScriptException ex) {
                             getLogger().log(Level.WARNING, "Error in library: " + library + ":" + ex.getMessage());
                         } catch (FileNotFoundException ex) {
+                            // Should never happen.
                             getLogger().log(Level.SEVERE, null, ex);
                         }
                         found = true;
@@ -143,22 +163,20 @@ public class EasyScript extends JavaPlugin implements Listener {
         } finally {
             Thread.currentThread().setContextClassLoader(oldClassLoader);
         }
-        serverConfig = new Config(this, new File(getDataFolder(), SERVER_CONFIG));
     }
 
-    @Override
-    public void onDisable() {
-        super.onDisable();
-        serverConfig.save();
-        serverConfig = null;
-        for (Config c : worldConfig.values()) {
-            c.save();
+    private void disableEngine() {
+        for (Listener i : registeredEventExecutors) {
+            HandlerList.unregisterAll(i);
         }
-        worldConfig.clear();
-        for (Config c : playerConfig.values()) {
-            c.save();
+        registeredEventExecutors.clear();
+        try {
+            registration.unregisterPluginCommands(getServer(), new HashSet(scriptCommands.values()));
+            registration.updateHelp(getServer());
+        } catch (UnsupportedOperationException e) {
+            // Ignored
         }
-        playerConfig.clear();
+        scriptCommands.clear();
         this.engine = null;
         this.invocable = null;
         this.compilable = null;
@@ -166,15 +184,6 @@ public class EasyScript extends JavaPlugin implements Listener {
         this.libraries.clear();
         this.scripts.clear();
         this.scriptDirectories.clear();
-        // Hack to workaround bukkit reregistering our commands every time
-        // we disable & enable ourselves.
-        try {
-            registration.unregisterPluginCommands(getServer(), this);
-            registration.updateHelp(getServer());
-        } catch (UnsupportedOperationException e) {
-            // Ignored
-        }
-        scriptCommands.clear();
     }
 
     /**
@@ -186,25 +195,43 @@ public class EasyScript extends JavaPlugin implements Listener {
      * @param function name of the function
      * @param args arguments
      * @return value returned from script
+     * @throws ScriptException when there is an error calling the function
+     * @throws NoSuchMethodException  when the function does not exist
+     */
+    public Object invokeLibraryFunction(String function, Object... args) throws ScriptException, NoSuchMethodException {
+        checkLibraries();
+        return invocable.invokeFunction(function, args);
+    }
+
+    /**
+     * Invoke a script from EasyScript's configured script directories.
+     * 
+     * @param script name of the script file (excluding extension)
+     * @param params parameters to pass to the script via the ScriptContext.
+     * @return result of executing the script.
      * @throws ScriptException
      * @throws NoSuchMethodException 
      */
-    public Object invokeLibraryFunction(String function, Object... args) throws ScriptException, NoSuchMethodException {
-        // Ignore return value, unlike commands and events we can still attempt
-        // to invoke the function after a reload.
-        checkLibraries();
-        return invocable.invokeFunction(function, args);
+    public Object invokeScript(String script, Map<String,Object> params) throws ScriptException, NoSuchMethodException {
+        ScriptHolder holder = getScript(script);
+        if (holder == null) {
+            throw new NoSuchMethodException("Script: " + script + " not found");
+        }
+        ScriptContext context = new EasyScriptContext(this.engine, this.engineContext);
+        context.setAttribute(ScriptEngine.FILENAME, holder.getSource().getPath(), EasyScriptContext.SCRIPT_SCOPE);
+        for (Map.Entry<String,Object> e : params.entrySet()) {
+            context.setAttribute(e.getKey(), e.getValue(), EasyScriptContext.SCRIPT_SCOPE);
+        }
+        return holder.getScript().eval(context);
     }
 
     /**
      * Reload all scripts.
      */
     public void reload() {
-        // Only way to unregister events.
-        getServer().getPluginManager().disablePlugin(this);
-        // Force reloading the configuration.
+        disableEngine();
         reloadConfig();
-        getServer().getPluginManager().enablePlugin(this);
+        enableEngine();
     }
 
     /**
@@ -213,34 +240,18 @@ public class EasyScript extends JavaPlugin implements Listener {
      * @param function The function in a library file to call.
      * @return The new command.
      */
-    public PluginCommand registerCommand(String cmd, final String function) {
-        final PluginCommand command = registration.registerCommand(this, cmd);
-        if (command != null) {
-            scriptCommands.put(cmd, command);
-            command.setExecutor(new CommandExecutor() {
-
-                public boolean onCommand(CommandSender cs, Command cmnd, String string, String[] strings) {
-                    if (!isEnabled()) {
-                        return false;
-                    }
-                    if (!checkLibraries()) {
-                        return false;
-                    }
-                    if (function == null) {
-                        return false;
-                    }
-                    try {
-                        return Boolean.TRUE == invocable.invokeFunction(function, cs, string, strings);
-                    } catch (ScriptException ex) {
-                        getLogger().log(Level.SEVERE, ex.getMessage());
-                    } catch (NoSuchMethodException ex) {
-                        getLogger().log(Level.SEVERE, ex.getMessage());
-                    }
-                    return false;
-                }
-            });
+    public PluginCommand registerCommand(String cmd, String function) {
+        try {
+            final PluginCommand command = registration.registerCommand(this, cmd);
+            if (command != null) {
+                scriptCommands.put(cmd, command);
+                command.setExecutor(new ScriptCommandExecutor(this, function));
+                return command;
+            }
+        } catch (UnsupportedOperationException ex) {
+            getLogger().log(Level.WARNING, null, ex);
         }
-        return command;
+        return null;
     }
 
     /**
@@ -277,24 +288,9 @@ public class EasyScript extends JavaPlugin implements Listener {
      * @param function The function to call to handle this event.
      */
     public void registerEvent(Class<? extends Event> eventClass, EventPriority priority, boolean ignoreCancelled, final String function) {
-        getServer().getPluginManager().registerEvent(eventClass, this, priority, new EventExecutor() {
-
-            public void execute(Listener ll, Event event) throws EventException {
-                if (!isEnabled()) {
-                    return;
-                }
-                if (!checkLibraries()) {
-                    return;
-                }
-                try {
-                    EasyScript.this.invocable.invokeFunction(function, new Object[]{event});
-                } catch (ScriptException ex) {
-                    EasyScript.this.getLogger().log(Level.WARNING, "Error handling event: " + ex.getMessage());
-                } catch (NoSuchMethodException ex) {
-                    EasyScript.this.getLogger().log(Level.WARNING, "Library non-existent registered event handler function: " + function);
-                }
-            }
-        }, this, ignoreCancelled);
+        ScriptEventExecutor executor = new ScriptEventExecutor(this, eventClass, function);
+        registeredEventExecutors.add(executor);
+        getServer().getPluginManager().registerEvent(eventClass, executor, priority, executor, this, ignoreCancelled);
     }
 
     public File getWorldConfigDirectory() {
@@ -374,6 +370,7 @@ public class EasyScript extends JavaPlugin implements Listener {
                         cached = new ScriptHolder(compiledScript, script, Long.valueOf(script.lastModified()));
                         this.scripts.put(name, cached);
                     } catch (FileNotFoundException ex) {
+                        // Should never happen.
                         getLogger().log(Level.SEVERE, null, ex);
                     } catch (ScriptException ex) {
                         getLogger().log(Level.WARNING, "Error in script:  " + script + " " + ex.getMessage());
@@ -392,31 +389,31 @@ public class EasyScript extends JavaPlugin implements Listener {
                 return false;
             }
             String script = args[0];
-            ScriptHolder holder = getScript(script);
-            if (holder == null) {
-                sender.sendMessage("Script not found: " + script);
-                return true;
-            }
             String[] shiftArgs = new String[args.length - 1];
             System.arraycopy(args, 1, shiftArgs, 0, shiftArgs.length);
-            ScriptContext context = new EasyScriptContext(this.engine, this.engineContext);
-            context.setAttribute(ScriptEngine.FILENAME, holder.getSource().getPath(), EasyScriptContext.SCRIPT_SCOPE);
+
+            Map<String,Object> env = new HashMap<String,Object>();
             if ((sender instanceof BlockCommandSender)) {
-                context.setAttribute("block", ((BlockCommandSender) sender).getBlock(), 50);
+                env.put("block", ((BlockCommandSender)sender).getBlock());
             } else {
-                context.setAttribute("block", null, EasyScriptContext.SCRIPT_SCOPE);
+                env.put("block", null);
             }
             if ((sender instanceof Player)) {
-                context.setAttribute("player", sender, EasyScriptContext.SCRIPT_SCOPE);
+                env.put("player", sender);
             } else {
-                context.setAttribute("player", null, EasyScriptContext.SCRIPT_SCOPE);
+                env.put("player", null);
             }
-            context.setAttribute("sender", sender, EasyScriptContext.SCRIPT_SCOPE);
-            context.setAttribute("args", shiftArgs, EasyScriptContext.SCRIPT_SCOPE);
+            env.put("sender", sender);
+            env.put("args", shiftArgs);
             try {
-                holder.getScript().eval(context);
+                invokeScript(script, env);
             } catch (ScriptException ex) {
-                sender.sendMessage("Error in script " + holder.getSource() + " " + ex.getMessage());
+                sender.sendMessage("Error in script " + script + " " + ex.getMessage());
+            } catch (NoSuchMethodException ex) {
+                sender.sendMessage("Script: " + script + " not found.");
+            } catch (RuntimeException ex) {
+                sender.sendMessage("Error in script, see server console.");
+                getLogger().log(Level.WARNING, "Error in script: " + script, ex);
             }
             return true;
         }
@@ -458,102 +455,6 @@ public class EasyScript extends JavaPlugin implements Listener {
 
         public void close()
                 throws IOException {
-        }
-    }
-
-    private static final class EasyScriptContext
-            implements ScriptContext {
-
-        public static final int SCRIPT_SCOPE = 50;
-        private static final List<Integer> SCOPES = new ArrayList<Integer>(3);
-        private final ScriptContext parent;
-        private Bindings bindings;
-
-        public EasyScriptContext(ScriptEngine engine, ScriptContext parent) {
-            this.parent = parent;
-            this.bindings = engine.createBindings();
-        }
-
-        public void setBindings(Bindings bindings, int scope) {
-            if (scope == 50) {
-                this.bindings = bindings;
-            } else {
-                this.parent.setBindings(bindings, scope);
-            }
-        }
-
-        public Bindings getBindings(int scope) {
-            if (scope == 50) {
-                return this.bindings;
-            }
-            return this.parent.getBindings(scope);
-        }
-
-        public void setAttribute(String name, Object value, int scope) {
-            if (scope == 50) {
-                this.bindings.put(name, value);
-            } else {
-                this.parent.setAttribute(name, value, scope);
-            }
-        }
-
-        public Object getAttribute(String name, int scope) {
-            if (scope == 50) {
-                return this.bindings.get(name);
-            }
-            return this.parent.getAttribute(name, scope);
-        }
-
-        public Object removeAttribute(String name, int scope) {
-            if (scope == 50) {
-                return this.bindings.remove(name);
-            }
-            return this.parent.removeAttribute(name, scope);
-        }
-
-        public Object getAttribute(String name) {
-            return this.bindings.get(name);
-        }
-
-        public int getAttributesScope(String name) {
-            if (this.bindings.containsKey(name)) {
-                return 50;
-            }
-            return this.parent.getAttributesScope(name);
-        }
-
-        public Writer getWriter() {
-            return this.parent.getWriter();
-        }
-
-        public Writer getErrorWriter() {
-            return this.parent.getErrorWriter();
-        }
-
-        public void setWriter(Writer writer) {
-            this.parent.setWriter(writer);
-        }
-
-        public void setErrorWriter(Writer writer) {
-            this.parent.setErrorWriter(writer);
-        }
-
-        public Reader getReader() {
-            return this.parent.getReader();
-        }
-
-        public void setReader(Reader reader) {
-            this.parent.setReader(reader);
-        }
-
-        public List<Integer> getScopes() {
-            return SCOPES;
-        }
-
-        static {
-            SCOPES.add(Integer.valueOf(50));
-            SCOPES.add(Integer.valueOf(100));
-            SCOPES.add(Integer.valueOf(200));
         }
     }
 

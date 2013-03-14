@@ -7,6 +7,7 @@ package org.cyberiantiger.minecraft.easyscript.unsafe;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Iterator;
+import java.util.Set;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
@@ -33,7 +34,7 @@ public class CommandRegistration147 implements CommandRegistration {
             cons.setAccessible(true);
             PluginCommand ret = cons.newInstance(command, plugin);
             CommandMap map = ((CraftServer) plugin.getServer()).getCommandMap();
-            map.register("easyscript", ret);
+            map.register(plugin.getName(), ret);
             return ret;
         } catch (NoSuchMethodException ex) {
             return null;
@@ -70,13 +71,13 @@ public class CommandRegistration147 implements CommandRegistration {
         ((SimpleHelpMap) server.getHelpMap()).initializeCommands();
     }
 
-    public void unregisterPluginCommands(Server server, Plugin plugin) {
+    public void unregisterPluginCommands(Server server, Set<PluginCommand> commands) {
         SimpleCommandMap map = ((CraftServer) server).getCommandMap();
         Iterator<Command> i = map.getCommands().iterator();
         while (i.hasNext()) {
             Command c = i.next();
             if (c instanceof PluginCommand) {
-                if (((PluginCommand)c).getPlugin() == plugin) {
+                if (commands.contains(c)) {
                     c.unregister(map);
                     i.remove();
                 }
