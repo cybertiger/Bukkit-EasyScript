@@ -31,15 +31,12 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistration;
-import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistrationFactory;
 
 public class EasyScript extends JavaPlugin {
     public static final String SERVER_CONFIG = "server.yml";
     public static final String WORLD_CONFIG_DIRECTORY = "world";
     public static final String PLAYER_CONFIG_DIRECTORY = "player";
 
-    private static final CommandRegistration registration =
-            CommandRegistrationFactory.createCommandRegistration();
     private ScriptEngine engine;
     private Invocable invocable;
     private Compilable compilable;
@@ -156,7 +153,7 @@ public class EasyScript extends JavaPlugin {
                 this.scriptDirectories.add(scriptDirectory);
             }
             try {
-                registration.updateHelp(getServer());
+                CommandRegistration.updateHelp(this, getServer());
             } catch (UnsupportedOperationException e) {
                 // Ignored.
             }
@@ -171,8 +168,8 @@ public class EasyScript extends JavaPlugin {
         }
         registeredEventExecutors.clear();
         try {
-            registration.unregisterPluginCommands(getServer(), new HashSet(scriptCommands.values()));
-            registration.updateHelp(getServer());
+            CommandRegistration.unregisterPluginCommands(getServer(), new HashSet(scriptCommands.values()));
+            CommandRegistration.updateHelp(this, getServer());
         } catch (UnsupportedOperationException e) {
             // Ignored
         }
@@ -242,7 +239,7 @@ public class EasyScript extends JavaPlugin {
      */
     public PluginCommand registerCommand(String cmd, String function) {
         try {
-            final PluginCommand command = registration.registerCommand(this, cmd);
+            final PluginCommand command = CommandRegistration.registerCommand(this, cmd);
             if (command != null) {
                 scriptCommands.put(cmd, command);
                 command.setExecutor(new ScriptCommandExecutor(this, function));
@@ -410,7 +407,7 @@ public class EasyScript extends JavaPlugin {
             } catch (ScriptException ex) {
                 sender.sendMessage("Error in script " + script + " " + ex.getMessage());
             } catch (NoSuchMethodException ex) {
-                sender.sendMessage("Script: " + script + " not found.");
+                sender.sendMessage("Error in script " + script + " " + ex.getMessage());
             } catch (RuntimeException ex) {
                 sender.sendMessage("Error in script, see server console.");
                 getLogger().log(Level.WARNING, "Error in script: " + script, ex);
