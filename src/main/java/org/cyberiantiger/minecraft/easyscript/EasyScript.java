@@ -342,7 +342,7 @@ public class EasyScript extends JavaPlugin {
         return true;
     }
 
-    private ScriptHolder getScript(String name) {
+    private ScriptHolder getScript(String name) throws ScriptException {
         ScriptHolder cached = this.scripts.get(name);
 
         if (cached != null) {
@@ -369,8 +369,6 @@ public class EasyScript extends JavaPlugin {
                     } catch (FileNotFoundException ex) {
                         // Should never happen.
                         getLogger().log(Level.SEVERE, null, ex);
-                    } catch (ScriptException ex) {
-                        getLogger().log(Level.WARNING, "Error in script:  " + script + " " + ex.getMessage());
                     }
                     break LOOP;
                 }
