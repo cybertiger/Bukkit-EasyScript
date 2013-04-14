@@ -2,7 +2,12 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.cyberiantiger.minecraft</groupId>
   <artifactId>easyscript</artifactId>
-  <version>1.2</version>
+  <version>1.2-SNAPSHOT</version>
+  <scm>
+    <url>https://github.com/cybertiger/Bukkit-ScoreShare/</url>
+    <connection>scm:git:git://github.com/cybertiger/Bukkit-ScoreShare.git</connection>
+    <developerConnection>scm:git:git@github.com:cybertiger/Bukkit-ScoreShare.git</developerConnection>
+  </scm>
   <build>
     <sourceDirectory>src/main/java</sourceDirectory>
     <resources>
@@ -20,19 +25,41 @@
         </configuration>
       </plugin>
     </plugins>
+    <extensions>
+      <extension>
+        <groupId>org.apache.maven.wagon</groupId>
+        <artifactId>wagon-webdav</artifactId>
+        <version>1.0-beta-2</version>
+      </extension>
+    </extensions>
   </build>
   <repositories>
-		<repository>
-			<id>bukkit-rel</id>
-			<name>repo.bukkit.org Releases</name>
-			<url>http://repo.bukkit.org/content/repositories/releases/</url>
-		</repository>
-	</repositories>
+    <repository>
+      <id>bukkit-repo</id>
+      <url>http://repo.bukkit.org/content/groups/public/</url>
+    </repository>
+    <repository>
+      <id>cyberiantiger.repo</id>
+      <url>http://cyberiantiger.org/maven/</url>
+    </repository>
+  </repositories>
   <dependencies>
-  	<dependency>
-  		<groupId>org.bukkit</groupId>
-  		<artifactId>craftbukkit</artifactId>
-  		<version>1.4.7-R1.0</version>
-  	</dependency>
+    <dependency>
+      <groupId>org.bukkit</groupId>
+      <artifactId>craftbukkit</artifactId>
+      <version>1.4.7-R1.0</version>
+    </dependency>
   </dependencies>
+  <distributionManagement>
+    <repository>
+      <id>cyberiantiger.repo</id>
+      <name>CyberianTiger Maven Repository</name>
+      <url>dav:http://cyberiantiger.org/maven</url>
+    </repository>
+    <snapshotRepository>
+      <id>cyberiantiger.repo</id>
+      <name>CyberianTiger Maven Repository</name>
+      <url>dav:http://cyberiantiger.org/maven</url>
+    </snapshotRepository>
+  </distributionManagement>
 </project>
