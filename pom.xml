@@ -4,9 +4,9 @@
   <artifactId>easyscript</artifactId>
   <version>1.2-SNAPSHOT</version>
   <scm>
-    <url>https://github.com/cybertiger/Bukkit-ScoreShare/</url>
-    <connection>scm:git:git://github.com/cybertiger/Bukkit-ScoreShare.git</connection>
-    <developerConnection>scm:git:git@github.com:cybertiger/Bukkit-ScoreShare.git</developerConnection>
+    <url>https://github.com/cybertiger/Bukkit-EasyScript/</url>
+    <connection>scm:git:git://github.com/cybertiger/Bukkit-EasyScript.git</connection>
+    <developerConnection>scm:git:git@github.com:cybertiger/Bukkit-EasyScript.git</developerConnection>
   </scm>
   <build>
     <sourceDirectory>src/main/java</sourceDirectory>
