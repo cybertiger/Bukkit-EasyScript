@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.cyberiantiger.minecraft</groupId>
   <artifactId>easyscript</artifactId>
-  <version>1.2-SNAPSHOT</version>
+  <version>1.2</version>
   <scm>
     <url>https://github.com/cybertiger/Bukkit-EasyScript/</url>
     <connection>scm:git:git://github.com/cybertiger/Bukkit-EasyScript.git</connection>
@@ -20,8 +20,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.0</version>
         <configuration>
-          <source/>
-          <target/>
+          <source />
+          <target />
         </configuration>
       </plugin>
     </plugins>
