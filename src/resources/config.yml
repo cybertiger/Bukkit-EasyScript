@@ -1,5 +1,7 @@
 language: javascript
 autoreload: true
+use-uuids: true
+migrate-player-configs: false
 libraries:
   - library
 scripts:

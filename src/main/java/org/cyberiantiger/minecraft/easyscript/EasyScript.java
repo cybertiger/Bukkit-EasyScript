@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Level;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
@@ -42,13 +43,16 @@ public class EasyScript extends JavaPlugin {
     private Compilable compilable;
     private ScriptContext engineContext;
     private boolean autoreload;
+    private boolean useUuids;
+    private boolean migratePlayerConfigs;
     private Map<File, Long> libraries;
     private Map<String, ScriptHolder> scripts;
     private List<File> scriptDirectories;
     private Map<String, PluginCommand> scriptCommands;
     private Config serverConfig;
     private Map<String, Config> worldConfig = new HashMap<String, Config>();
-    private Map<String, Config> playerConfig = new HashMap<String, Config>();
+    private Map<UUID, Config> playerUuidConfig = new HashMap<UUID, Config>();
+    private Map<String, Config> playerNameConfig = new HashMap<String, Config>();
     private final List<ScriptEventExecutor> registeredEventExecutors = new ArrayList<ScriptEventExecutor>();
 
     public EasyScript() {
@@ -76,10 +80,17 @@ public class EasyScript extends JavaPlugin {
             c.save();
         }
         worldConfig.clear();
-        for (Config c : playerConfig.values()) {
-            c.save();
+        if (useUuids) {
+            for (Config c : playerUuidConfig.values()) {
+                c.save();
+            }
+            playerUuidConfig.clear();
+        } else {
+            for (Config c : playerNameConfig.values()) {
+                c.save();
+            }
+            playerNameConfig.clear();
         }
-        playerConfig.clear();
     }
 
     private void enableEngine() {
@@ -88,7 +99,11 @@ public class EasyScript extends JavaPlugin {
             Thread.currentThread().setContextClassLoader(EasyScript.class.getClassLoader());
             FileConfiguration config = getConfig();
             ScriptEngineManager manager = new ScriptEngineManager(EasyScript.class.getClassLoader());
-            this.autoreload = config.getBoolean("autoreload");
+
+            this.autoreload = config.getBoolean("autoreload", false);
+            this.useUuids = config.getBoolean("use-uuids", true);
+            this.migratePlayerConfigs = config.getBoolean("migrate-player-configs", true);
+
             this.engine = manager.getEngineByName(config.getString("language"));
             if (this.engine == null) {
                 getLogger().severe("Script engine named: " + config.getString("language") + " not found, disabling plugin.");
@@ -376,14 +391,31 @@ public class EasyScript extends JavaPlugin {
         return new File(getDataFolder(), PLAYER_CONFIG_DIRECTORY);
     }
 
+    /**
+     * Get a configuration for the server.
+     * 
+     * @return A configuration for the server.
+     */
     public Config getServerConfig() {
         return serverConfig;
     }
 
+    /**
+     * Get a per world configuration.
+     * 
+     * @param world The world the configuration is for.
+     * @return A configuration for the world.
+     */
     public Config getWorldConfig(World world) {
         return getWorldConfig(world.getName());
     }
 
+    /**
+     * Get a per world configuration.
+     * 
+     * @param world The name of the world the configuration is for.
+     * @return A configuration for the world.
+     */
     public Config getWorldConfig(String world) {
         Config config = worldConfig.get(world);
         if (config == null) {
@@ -393,19 +425,74 @@ public class EasyScript extends JavaPlugin {
         return config;
     }
 
+    /**
+     * Get a per player configuration.
+     * 
+     * <p>If use UUIDs is true this delegates to getPlayerConfig(player.getUniqueId()),
+     * else it delegates to getPlayerConfig(player.getName()).
+     * 
+     * <p>If use UUIDs is true, and migrate player configs is true, this will attempt
+     * to rename any old player configs under the player's name to the player's 
+     * UUID.
+     * 
+     * @param player The player the configuration is for.
+     * @return A configuration for the player.
+     */
     public Config getPlayerConfig(Player player) {
-        return getPlayerConfig(player.getName());
+        if (useUuids) {
+            if(migratePlayerConfigs) {
+                File playerNameConfigFile = new File(getPlayerConfigDirectory(), player.getName() + ".yml");
+                File playerUuidConfigFile = new File(getPlayerConfigDirectory(), player.getUniqueId() + ".yml");
+                if (playerNameConfigFile.exists() && !playerUuidConfigFile.exists()) {
+                    playerNameConfigFile.renameTo(playerUuidConfigFile);
+                }
+            }
+            return getPlayerConfig(player.getUniqueId());
+        } else {
+            return getPlayerConfig(player.getName());
+        }
     }
 
-    public Config getPlayerConfig(String player) {
-        Config config = playerConfig.get(player);
+    /**
+     * Get a per player configuration.
+     *
+     * If the player is online and we are configured to use player UUIDs,
+     * this will delegate to getPlayerConfig(Player)
+     * 
+     * @param player The name of the player.
+     * @return A configuration for the player.
+     * @deprecated Does not use UUIDs.
+     */
+    public Config getPlayerConfig(String playerName) {
+        if (useUuids) {
+            Player player = getServer().getPlayer(playerName);
+            if (player != null) {
+                return getPlayerConfig(player);
+            }
+        }
+        Config config = playerNameConfig.get(playerName);
         if (config == null) {
-            config = new Config(this, new File(getPlayerConfigDirectory(), player + ".yml"));
-            playerConfig.put(player, config);
+            config = new Config(this, new File(getPlayerConfigDirectory(), playerName + ".yml"));
+            playerNameConfig.put(playerName, config);
         }
         return config;
     }
 
+    /**
+     * Get a per player configuration by their UUID.
+     *  
+     * @param uuid The uuid of the player.
+     * @return 
+     */
+    public Config getPlayerConfig(UUID uuid) {
+        Config config = playerUuidConfig.get(uuid);
+        if (config == null) {
+            config = new Config(this, new File(getPlayerConfigDirectory(), uuid + ".yml"));
+            playerUuidConfig.put(uuid, config);
+        }
+        return config;
+    }
+        
 
     private boolean checkLibraries() {
         if (!this.autoreload) {
