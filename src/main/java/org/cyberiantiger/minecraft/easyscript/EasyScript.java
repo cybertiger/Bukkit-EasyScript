@@ -311,7 +311,7 @@ public class EasyScript extends JavaPlugin {
      * @param function The function to call to handle this event.
      * @deprecated Use the variant which takes an EventCallback.
      */
-    public void registerEvent(Class<? extends Event> eventClass, EventPriority priority, String function) {
+    public <T extends Event> void registerEvent(Class<T> eventClass, EventPriority priority, String function) {
         registerEvent(eventClass, priority, true, function);
     }
 
@@ -324,7 +324,7 @@ public class EasyScript extends JavaPlugin {
      * @param priority The priority of the event handler.
      * @param callback The function to call to handle this event.
      */
-    public void registerEvent(Class<? extends Event> eventClass, EventPriority priority, EventCallback callback) {
+    public <T extends Event> void registerEvent(Class<T> eventClass, EventPriority priority, EventCallback<T> callback) {
         registerEvent(eventClass, priority, true, callback);
     }
 
