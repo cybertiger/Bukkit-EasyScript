@@ -5,10 +5,14 @@
 package org.cyberiantiger.minecraft.easyscript.unsafe;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.PluginCommand;
@@ -96,9 +100,10 @@ public final class CommandRegistration {
     public static void unregisterPluginCommands(Server server, Set<PluginCommand> commands) {
         try {
             SimpleCommandMap map = getCommandMap(server);
-            Iterator<Command> i = map.getCommands().iterator();
+            Iterator<Map.Entry<String,Command>> i = getKnownCommands(map).entrySet().iterator();
             while (i.hasNext()) {
-                Command c = i.next();
+                Map.Entry<String,Command> e = i.next();
+                Command c = e.getValue();
                 if (c instanceof PluginCommand) {
                     if (commands.contains(c)) {
                         c.unregister(map);
@@ -114,7 +119,15 @@ public final class CommandRegistration {
             throw new UnsupportedOperationException(ex);
         } catch (InvocationTargetException ex) {
             throw new UnsupportedOperationException(ex);
+        } catch (NoSuchFieldException ex) {
+            throw new UnsupportedOperationException(ex);
         }
+    }
+
+    private static Map<String,Command> getKnownCommands(SimpleCommandMap map) throws NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
+        Field knownCommands = map.getClass().getDeclaredField("knownCommands");
+        knownCommands.setAccessible(true);
+        return (Map<String, Command>) knownCommands.get(map);
     }
 
     private static SimpleCommandMap getCommandMap(Server server) throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {

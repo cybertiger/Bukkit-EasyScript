@@ -12,6 +12,7 @@
     <sourceDirectory>src/main/java</sourceDirectory>
     <resources>
       <resource>
+        <filtering>true</filtering>
         <directory>src/resources</directory>
       </resource>
     </resources>
@@ -48,6 +49,7 @@
       <groupId>org.bukkit</groupId>
       <artifactId>craftbukkit</artifactId>
       <version>1.4.7-R1.0</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
   <distributionManagement>

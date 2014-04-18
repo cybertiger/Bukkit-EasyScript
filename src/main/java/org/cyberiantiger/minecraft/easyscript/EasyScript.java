@@ -171,7 +171,7 @@ public class EasyScript extends JavaPlugin {
             CommandRegistration.unregisterPluginCommands(getServer(), new HashSet(scriptCommands.values()));
             CommandRegistration.updateHelp(this, getServer());
         } catch (UnsupportedOperationException e) {
-            // Ignored
+            getLogger().log(Level.WARNING, "There was an error unregistering a command, scriptreload will not correctly unregister commands");
         }
         scriptCommands.clear();
         this.engine = null;
@@ -236,13 +236,38 @@ public class EasyScript extends JavaPlugin {
      * @param cmd The name of the command.
      * @param function The function in a library file to call.
      * @return The new command.
+     * @deprecated Use the variant which takes a CommandCallback.
      */
-    public PluginCommand registerCommand(String cmd, String function) {
+    public PluginCommand registerCommand(String cmd, final String function) {
+        return registerCommand(cmd, new CommandCallback() {
+            @Override
+            public boolean callback(CommandSender sender, String command, String[] args) {
+                try {
+                    return Boolean.TRUE == invokeLibraryFunction(function, sender, command, args);
+                } catch (ScriptException ex) {
+                    getLogger().log(Level.WARNING, ex.getMessage());
+                } catch (NoSuchMethodException ex) {
+                    getLogger().log(Level.WARNING, ex.getMessage());
+                } catch (RuntimeException ex) {
+                    getLogger().log(Level.WARNING, ex.getMessage());
+                }
+                return false;
+            }
+        });
+    }
+
+
+    /**
+     * Register a new command.
+     * @param cmd The name of the command.
+     * @param callback A handler for the command.
+     */
+    public PluginCommand registerCommand(String cmd, CommandCallback callback) {
         try {
             final PluginCommand command = CommandRegistration.registerCommand(this, cmd);
             if (command != null) {
                 scriptCommands.put(cmd, command);
-                command.setExecutor(new ScriptCommandExecutor(this, function));
+                command.setExecutor(new ScriptCommandExecutor(this, callback));
                 return command;
             }
         } catch (UnsupportedOperationException ex) {
@@ -258,9 +283,22 @@ public class EasyScript extends JavaPlugin {
      *
      * @param eventClass The event to register the handler for.
      * @param function The function to call to handle this event.
+     * @deprecated Use the variant which takes an EventCallback.
      */
     public void registerEvent(Class<? extends Event> eventClass, String function) {
         registerEvent(eventClass, EventPriority.NORMAL, function);
+    }
+
+    /**
+     * Register an event handler.
+     *
+     * Uses EventPriority.NORMAL and ignores cancelled events.
+     *
+     * @param eventClass The event to register the handler for.
+     * @param callback The callback to call to handle this event.
+     */
+    public <T extends Event> void registerEvent(Class<T> eventClass, EventCallback<T> callback) {
+        registerEvent(eventClass, EventPriority.NORMAL, callback);
     }
 
     /**
@@ -271,9 +309,23 @@ public class EasyScript extends JavaPlugin {
      * @param eventClass The event to register the handler for.
      * @param priority The priority of the event handler.
      * @param function The function to call to handle this event.
+     * @deprecated Use the variant which takes an EventCallback.
      */
     public void registerEvent(Class<? extends Event> eventClass, EventPriority priority, String function) {
         registerEvent(eventClass, priority, true, function);
+    }
+
+    /**
+     * Register an event handler.
+     *
+     * Ignores cancelled events.
+     *
+     * @param eventClass The event to register the handler for.
+     * @param priority The priority of the event handler.
+     * @param callback The function to call to handle this event.
+     */
+    public void registerEvent(Class<? extends Event> eventClass, EventPriority priority, EventCallback callback) {
+        registerEvent(eventClass, priority, true, callback);
     }
 
     /**
@@ -283,9 +335,35 @@ public class EasyScript extends JavaPlugin {
      * @param priority The priority of the event handler.
      * @param ignoreCancelled Whether the handler should be passed cancelled events.
      * @param function The function to call to handle this event.
+     * @deprecated Use the variant which takes an EventCallback.
      */
-    public void registerEvent(Class<? extends Event> eventClass, EventPriority priority, boolean ignoreCancelled, final String function) {
-        ScriptEventExecutor executor = new ScriptEventExecutor(this, eventClass, function);
+    public <T extends Event> void registerEvent(Class<T> eventClass, EventPriority priority, boolean ignoreCancelled, final String function) {
+        registerEvent(eventClass, priority, ignoreCancelled, new EventCallback<T>() {
+            @Override
+            public void callback(T t) {
+                try {
+                    invokeLibraryFunction(function, t);
+                } catch (ScriptException ex) {
+                    getLogger().log(Level.WARNING, ex.getMessage());
+                } catch (NoSuchMethodException ex) {
+                    getLogger().log(Level.WARNING, ex.getMessage());
+                } catch (RuntimeException ex) {
+                    getLogger().log(Level.WARNING, ex.getMessage());
+                }
+            }
+        });
+    }
+
+    /**
+     * Register an event handler.
+     *
+     * @param eventClass The event to register the handler for.
+     * @param priority The priority of the event handler.
+     * @param ignoreCancelled Whether the handler should be passed cancelled events.
+     * @param callback The callback to call to handle this event.
+     */
+    public <T extends Event> void registerEvent(Class<? extends Event> eventClass, EventPriority priority, boolean ignoreCancelled, EventCallback<T> callback) {
+        ScriptEventExecutor executor = new ScriptEventExecutor(this, eventClass, callback);
         registeredEventExecutors.add(executor);
         getServer().getPluginManager().registerEvent(eventClass, executor, priority, executor, this, ignoreCancelled);
     }

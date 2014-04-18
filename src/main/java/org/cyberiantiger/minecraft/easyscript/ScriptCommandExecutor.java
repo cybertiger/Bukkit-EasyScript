@@ -15,15 +15,22 @@ import org.bukkit.command.CommandSender;
  * @author antony
  */
 class ScriptCommandExecutor implements CommandExecutor {
-    private final String function;
-    private EasyScript plugin;
+    private final EasyScript plugin;
+    private final CommandCallback callback;
 
-    public ScriptCommandExecutor(EasyScript plugin, String function) {
+    public ScriptCommandExecutor(EasyScript plugin, CommandCallback callback) {
         this.plugin = plugin;
-        this.function = function;
+        this.callback = callback;
     }
 
     public boolean onCommand(CommandSender cs, Command cmnd, String string, String[] strings) {
+        try {
+            return callback.callback(cs, string, strings);
+        } catch (RuntimeException ex) {
+            plugin.getLogger().log(Level.WARNING, ex.getMessage());
+            return false;
+        }
+        /*
         try {
             return Boolean.TRUE == plugin.invokeLibraryFunction(function, cs, string, strings);
         } catch (ScriptException ex) {
@@ -34,6 +41,7 @@ class ScriptCommandExecutor implements CommandExecutor {
             plugin.getLogger().log(Level.WARNING, ex.getMessage());
         }
         return false;
+        */
     }
     
 }
