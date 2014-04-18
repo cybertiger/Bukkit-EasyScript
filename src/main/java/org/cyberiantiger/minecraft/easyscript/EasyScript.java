@@ -461,7 +461,7 @@ public class EasyScript extends JavaPlugin {
      * 
      * @param player The name of the player.
      * @return A configuration for the player.
-     * @deprecated Does not use UUIDs.
+     * @throws IllegalStateException When we are configured to use UUIDs and the player is not online.
      */
     public Config getPlayerConfig(String playerName) {
         if (useUuids) {
@@ -469,6 +469,7 @@ public class EasyScript extends JavaPlugin {
             if (player != null) {
                 return getPlayerConfig(player);
             }
+            throw new IllegalStateException("Cannot load configuration by uuid for named offline players, use getPlayerConfig(Player) or getPlayerConfig(UUID)");
         }
         Config config = playerNameConfig.get(playerName);
         if (config == null) {
