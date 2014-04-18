@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.cyberiantiger.minecraft</groupId>
   <artifactId>easyscript</artifactId>
-  <version>1.3</version>
+  <version>1.4-SNAPSHOT</version>
   <scm>
     <url>https://github.com/cybertiger/Bukkit-EasyScript/</url>
     <connection>scm:git:git://github.com/cybertiger/Bukkit-EasyScript.git</connection>
