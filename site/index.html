@@ -76,6 +76,8 @@ java <span class="Special">-classpath</span> <span class="PreProc">$CLASSPATH</s
 <div class="code"><pre>
 <span class="Identifier">language</span><span class="Special">:</span> javascript
 <span class="Identifier">autoreload</span><span class="Special">:</span> <span class="Constant">true</span>
+<span class="Identifier">use-uuids</span><span class="Special">:</span> <span class="Constant">true</span>
+<span class="Identifier">migrate-player-configs</span><span class="Special">:</span> <span class="Constant">false</span>
 <span class="Identifier">libraries</span><span class="Special">:</span>
   <span class="Statement">- </span>library
 <span class="Identifier">scripts</span><span class="Special">:</span>
@@ -85,6 +87,11 @@ java <span class="Special">-classpath</span> <span class="PreProc">$CLASSPATH</s
 <p>The language you wish to write scripts in, Python (via Jython) and Javascript (via Mozilla Rhino) are known to work. There are many languages supported, howerver configuring them correctly maybe difficult, the plugin requires a ScriptingEngine which is capable of both compiling a script and invoking functions in it, which will rule out some languages (e.g. BeanShell does not allow script compilation). The best way to find languages which might work is a <a href="http://google.com/search?q=jsr223 languages">google search</a>.</p>
 <h2>autoreload</h2>
 <p>Whether to autoreload scripts when they have been edited. This is checked when a user executes <code>/script</code> or a script registered command or when a bukkit event is delivered to your script. For development purposes you will want this set to <code>true</code>. On a production server where you are not developing your scripts setting it to <code>false</code> will provide a small performance improvement.</p>
+<h2>use-uuids</h2>
+<p>Whether to save player configurations by UUID or by name. If true, they will be saved by player's UUID, not their name.</p>
+<h2>migrate-player-configs</h2>
+<p>If use-uuids is true, attempt to rename player configurations to the player's
+UUID from the player's name.</p>
 <h2>libraries</h2>
 <p>A list of script files which are to be loaded on startup. This will search for a file in <code>plugins/EasyScript/&lt;name&gt;.&lt;suffix&gt;</code>. Where <code>&lt;name&gt;</code> is the name of the library and <code>&lt;suffix&gt;</code> is the file suffix for the scripting language, for example with javascript it is js, and with python it is py. The libraries are loaded in the order specified.</p>
 <h2>scripts</h2>
@@ -120,13 +127,13 @@ Set to the player if CommandSender is a Player.
 Set to the command block if CommandSender is a BlockCommandSender.
 <h2>Plugin Functions</h2>
 <p>The plugin provides function to make it easy to add new commands and hook into bukkit events. These are also documented in the plugin javadocs <a href="javadoc/">here</a></p>
-<h3>void registerEvent(Class type, String function)</h3>
+<h3>void registerEvent(Class type, Function function)</h3>
 <p>Listen for bukkit events with specified class, and pass them to the function in the script.</p>
-<h3>void registerEvent(Class type, EventPriority priority, String function)</h3>
+<h3>void registerEvent(Class type, EventPriority priority, Function function)</h3>
 <p>Same as above, but allows you to specify an event priority.</p>
-<h3>void registerEvent(Class type, EventPrioirity priority, boolean ignoreCancelled, String function)</h3>
+<h3>void registerEvent(Class type, EventPrioirity priority, boolean ignoreCancelled, Function function)</h3>
 <p>Same as above, but allows you to pass in an ignoreCancelled flag.</p>
-<h3>PluginCommand registerCommand(String name, String function)</h3>
+<h3>PluginCommand registerCommand(String name, Function function)</h3>
 <p>Register a command handler, returns a PluginCommand with which you can set the Usage and Help on.</p>
 <h3>Config getServerConfig()</h3>
 <p>Returns a Config object for persisting server wide data.</p>
@@ -135,9 +142,12 @@ Set to the command block if CommandSender is a BlockCommandSender.
 <h3>Config getWorldConfig(String world)</h3>
 <p>Returns a Config object for persisting per world data.</p>
 <h3>Config getPlayerConfig(Player player)</h3>
-<p>Returns a Config object for persisting per player data.</p>
+<p>Returns a Config object for persisting per player data. If configured to use
+UUIDs, this will get the config by UUID, else it will use the Player's name.</p>
 <h3>Config getPlayerConfig(String player)</h3>
-<p>Returns a Config object for persisting per player data.</p>
+<p>Returns a Config object for persisting per player data. If a user is offline and the plugin is configured to use UUIDs, this will error.</p>
+<h3>Config getPlayerConfig(UUID player)</h3>
+<p>Returns a Config object for persisting per player data.
 <h1 id="jsexamples">Javascript Examples</h1>
 <p>Here are some simple examples of what can be accomplished in javascript.</p>
 <h2>World Echo Script</h2>
@@ -207,7 +217,7 @@ importPackage(org.bukkit.potion)
     <span class="Identifier">}</span>
 <span class="Identifier">}</span>
 
-plugin.registerEvent(PlayerInteractEvent, <span class="Constant">&quot;onPlayerInteract&quot;</span>);
+plugin.registerEvent(PlayerInteractEvent, onPlayerInteract);
 </pre>
 </div>
 <h2>Add a worldecho command</h2>
@@ -246,7 +256,7 @@ importPackage(org.bukkit.potion)
     <span class="Statement">return</span> <span class="Constant">true</span>;
 <span class="Identifier">}</span>
 
-<span class="Identifier">var</span> worldEcho = plugin.registerCommand(<span class="Constant">&quot;worldecho&quot;</span>, <span class="Constant">&quot;worldecho&quot;</span>);
+<span class="Identifier">var</span> worldEcho = plugin.registerCommand(<span class="Constant">&quot;worldecho&quot;</span>, worldecho);
 worldEcho.setUsage(<span class="Constant">&quot;/&lt;command&gt; &lt;message&gt;&quot;</span>);
 worldEcho.setDescription(<span class="Constant">&quot;Echo a string to the local world.&quot;</span>);
 </pre>
@@ -270,7 +280,7 @@ importPackage(org.bukkit.potion)
         e.setCancelled(<span class="Constant">true</span>);
 <span class="Identifier">}</span>
 
-plugin.registerEvent(CreatureSpawnEvent, <span class="Constant">&quot;onCreatureSpawn&quot;</span>);
+plugin.registerEvent(CreatureSpawnEvent, onCreatureSpawn);
 </pre>
 </div>
 <h2 id="witherboss">Award WitherBoss drops to the player who does most damage.</h2>
@@ -345,8 +355,8 @@ importPackage(org.bukkit.potion)
     <span class="Identifier">}</span>
 <span class="Identifier">}</span>
 
-plugin.registerEvent(EntityDamageByEntityEvent, <span class="Constant">&quot;onEntityDamageByEntity&quot;</span>);
-plugin.registerEvent(EntityDeathEvent, <span class="Constant">&quot;onEntityDeath&quot;</span>);
+plugin.registerEvent(EntityDamageByEntityEvent, onEntityDamageByEntity);
+plugin.registerEvent(EntityDeathEvent, onEntityDeath);
 </pre>
 </div>
 </div>
