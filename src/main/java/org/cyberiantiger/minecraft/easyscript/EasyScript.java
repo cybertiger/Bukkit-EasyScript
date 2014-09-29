@@ -119,9 +119,8 @@ public class EasyScript extends JavaPlugin {
             if ((this.engine instanceof Invocable)) {
                 this.invocable = ((Invocable) this.engine);
             } else {
-                getLogger().severe("Selected scripting engine does not implement javax.script.Invocable, disabling plugin.");
-                getServer().getPluginManager().disablePlugin(this);
-                return;
+                getLogger().warning("ScriptEngine does not implment javax.script.Invocable, in order to invoke functions in your libary by name you will "+
+                        "need to call plugin.setInvocable(Invocable) from your library scripts.");
             }
             if ((this.engine instanceof Compilable)) {
                 this.compilable = ((Compilable) this.engine);
@@ -199,6 +198,15 @@ public class EasyScript extends JavaPlugin {
     }
 
     /**
+     * Set the Invocable used to invoke functions by name in our library
+     * scripts.
+     * 
+     */
+    public void setInvocable(Invocable invocable) {
+        this.invocable = invocable;
+    }
+
+    /**
      * Invoke a function in EasyScript's configured libraries.
      * 
      * This is intended for use by other plugins, that require script support
@@ -212,7 +220,12 @@ public class EasyScript extends JavaPlugin {
      */
     public Object invokeLibraryFunction(String function, Object... args) throws ScriptException, NoSuchMethodException {
         checkLibraries();
-        return invocable.invokeFunction(function, args);
+        if (invocable != null) {
+            return invocable.invokeFunction(function, args);
+        } else {
+            throw new NoSuchMethodException("ScriptEngine does not implement javax.script.Invocable, you need to call plugin.setInvocable(Invocable) " +
+                    "in order to invoke named scripts in your library");
+        }
     }
 
     /**
@@ -587,6 +600,10 @@ public class EasyScript extends JavaPlugin {
             return true;
         }
         return false;
+    }
+
+    private Exception NoSuchMethodException() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     private class LogWriter extends Writer {
