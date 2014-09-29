@@ -112,6 +112,13 @@ public class EasyScript extends JavaPlugin {
             } else {
                 if (engine.getFactory() != null) {
                     getLogger().info("Loaded scripting engine: " + engine.getFactory().getEngineName() + " version: " + engine.getFactory().getEngineVersion());
+                    StringBuilder tmp = new StringBuilder();
+                    tmp.append("Valid file extensions for your scripts are:");
+                    for (String s : engine.getFactory().getExtensions()) {
+                        tmp.append(' ');
+                        tmp.append(s);
+                    }
+                    getLogger().info(tmp.toString());
                 } else {
                     getLogger().info("Broken script engine, engine.getFactory() returned null, probably beanshell.");
                 }
