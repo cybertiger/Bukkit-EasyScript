@@ -201,6 +201,7 @@ public class EasyScript extends JavaPlugin {
      * Set the Invocable used to invoke functions by name in our library
      * scripts.
      * 
+     * @param invocable The invocable to use to execute named functions in library scripts.
      */
     public void setInvocable(Invocable invocable) {
         this.invocable = invocable;
