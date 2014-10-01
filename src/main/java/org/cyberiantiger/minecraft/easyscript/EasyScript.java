@@ -148,15 +148,43 @@ public class EasyScript extends JavaPlugin {
     
     @Override
     public void onEnable() {
-        super.onEnable();
+        config = loadConfig();
         copyDefaults();
+        File lib = new File(getDataFolder(), config.getJarDirectory());
+        if (!lib.exists()) {
+            lib.mkdirs();
+        }
+        
+        List<URL> libClasspath = new ArrayList<URL>();
+        
+        for (File libFile : lib.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String name) {
+                name = name.toLowerCase();
+                return name.endsWith(".jar") || name.endsWith(".zip");
+            }
+        })) {
+            try {
+                libClasspath.add(libFile.toURI().toURL());
+            } catch (MalformedURLException ex) {
+                getLogger().log(Level.SEVERE, null, ex);
+            }
+        }
+        
+        if (libClasspath.isEmpty()) {
+            this.libClassLoader = getClass().getClassLoader();
+        } else {
+            getLogger().log(Level.INFO, "Creating classloader for language runtime: {0}", libClasspath);
+            this.libClassLoader = URLClassLoader.newInstance(libClasspath.toArray(new URL[libClasspath.size()]), getClass().getClassLoader());
+        }
+
         serverConfig = new Config(this, new File(getDataFolder(), SERVER_CONFIG));
+
         enableEngine();
     }
 
     @Override
     public void onDisable() {
-        super.onDisable();
         disableEngine();
         serverConfig.save();
         serverConfig = null;
@@ -173,7 +201,6 @@ public class EasyScript extends JavaPlugin {
     private void enableEngine() {
         ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            config = loadConfig();
             if (config == null) {
                 getLogger().severe("Could not load configuration");
                 getServer().getPluginManager().disablePlugin(this);
@@ -184,33 +211,6 @@ public class EasyScript extends JavaPlugin {
                 System.setProperty(e.getKey(), e.getValue());
             }
 
-            File lib = new File(getDataFolder(), config.getJarDirectory());
-            if (!lib.exists()) {
-                lib.mkdirs();
-            }
-
-            List<URL> libClasspath = new ArrayList<URL>();
-
-            for (File libFile : lib.listFiles(new FilenameFilter() {
-                @Override
-                public boolean accept(File dir, String name) {
-                    name = name.toLowerCase();
-                    return name.endsWith(".jar") || name.endsWith(".zip");
-                }
-            })) {
-                try {
-                    libClasspath.add(libFile.toURI().toURL());
-                } catch (MalformedURLException ex) {
-                    getLogger().log(Level.SEVERE, null, ex);
-                }
-            }
-
-            if (libClasspath.isEmpty()) {
-                this.libClassLoader = getClass().getClassLoader();
-            } else {
-                getLogger().log(Level.INFO, "Creating classloader for language runtime: {0}", libClasspath);
-                this.libClassLoader = URLClassLoader.newInstance(libClasspath.toArray(new URL[libClasspath.size()]), getClass().getClassLoader());
-            }
 
             Thread.currentThread().setContextClassLoader(libClassLoader);
 
