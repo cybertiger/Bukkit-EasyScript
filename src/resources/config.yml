@@ -1,8 +1,23 @@
+autoreload: false
 language: javascript
-autoreload: true
-use-uuids: true
-migrate-player-configs: false
+jarDirectory: lib
+# Set this to false for jruby, it does not correctly handle scopes, other
+# than ENGINE_SCOPE and GLOBAL_SCOPE defined in JSR 223
+useScriptScope: true
+systemProperties:
+    # See https://wiki.openjdk.java.net/display/Nashorn/Nashorn+jsr223+engine+notes
+    nashorn.args: ''
+    # See https://kenai.com/projects/jruby-embed/pages/Home
+    org.jruby.embed.localcontext.scope: 'singleton'
+    org.jruby.embed.localvariable.behavior: 'global'
+    org.jruby.embed.compilemode: off
+    # See https://wiki.python.org/jython/Settings
+    python.cachedir: 'pythoncachedir'
+    python.cachedir.skip: false
+    # Groovy uses no system properties other than groovy.home which is not
+    # required if you use the groovy-all jar
+    # groovy.home /home/user/groovy-2.3.7
 libraries:
   - library
-scripts:
+scriptPath:
   - scripts

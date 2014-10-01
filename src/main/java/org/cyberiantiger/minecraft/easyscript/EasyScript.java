@@ -1,10 +1,18 @@
 package org.cyberiantiger.minecraft.easyscript;
 
+import com.google.common.io.ByteStreams;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Writer;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,11 +20,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
 import javax.script.Invocable;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import org.bukkit.World;
@@ -24,48 +34,122 @@ import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.cyberiantiger.minecraft.easyscript.config.ESConfig;
 import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistration;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.CustomClassLoaderConstructor;
+import org.yaml.snakeyaml.error.YAMLException;
+import org.yaml.snakeyaml.introspector.BeanAccess;
 
 public class EasyScript extends JavaPlugin {
+    private static final String CONFIG = "config.yml";
+    private static final String JS_LIBRARY = "library.js";
+    private static final String JS_LIBRARY_RHINO = "library_rhino.js";
+    private static final String JS_LIBRARY_NASHORN = "library_nashorn.js";
+    private static final String NASHORN_ENGINE = "nashorn";
+    private static final String RHINO_ENGINE = "rhino";
+    private static final String[] DEFAULTS = new String[] {
+        CONFIG,
+        JS_LIBRARY_RHINO,
+        JS_LIBRARY_NASHORN,
+        "library.rb",
+        "library.py",
+        "library.groovy",
+        "scripts/test.js",
+        "scripts/test.rb",
+        "scripts/test.py",
+        "scripts/test.groovy"
+    };
     public static final String SERVER_CONFIG = "server.yml";
     public static final String WORLD_CONFIG_DIRECTORY = "world";
     public static final String PLAYER_CONFIG_DIRECTORY = "player";
+
+    private ESConfig config;
 
     private ScriptEngine engine;
     private Invocable invocable;
     private Compilable compilable;
     private ScriptContext engineContext;
-    private boolean autoreload;
-    private boolean useUuids;
-    private boolean migratePlayerConfigs;
-    private Map<File, Long> libraries;
-    private Map<String, ScriptHolder> scripts;
-    private List<File> scriptDirectories;
-    private Map<String, PluginCommand> scriptCommands;
+    private ClassLoader libClassLoader;
+    private Map<File,Long> libraries = new HashMap<File,Long>();
+    private Map<String, ScriptHolder> scripts = new HashMap<String, ScriptHolder>();
+    private Map<String, PluginCommand> scriptCommands = new HashMap<String, PluginCommand>();
+    private final List<ScriptEventExecutor> registeredEventExecutors = new ArrayList<ScriptEventExecutor>();
+
     private Config serverConfig;
     private Map<String, Config> worldConfig = new HashMap<String, Config>();
     private Map<UUID, Config> playerUuidConfig = new HashMap<UUID, Config>();
-    private Map<String, Config> playerNameConfig = new HashMap<String, Config>();
-    private final List<ScriptEventExecutor> registeredEventExecutors = new ArrayList<ScriptEventExecutor>();
 
     public EasyScript() {
-        this.libraries = new HashMap<File, Long>();
-        this.scripts = new HashMap<String, ScriptHolder>();
-        this.scriptDirectories = new ArrayList<File>();
-        this.scriptCommands = new HashMap<String, PluginCommand>();
+    }
+
+    private File getConfigFile() {
+        return new File(getDataFolder(), CONFIG);
+    }
+
+    private ESConfig loadConfig() {
+        try {
+            Yaml configLoader = new Yaml(new CustomClassLoaderConstructor(ESConfig.class, getClass().getClassLoader()));
+            configLoader.setBeanAccess(BeanAccess.FIELD);
+            return configLoader.loadAs(new FileReader(getConfigFile()), ESConfig.class);
+        } catch (IOException ex) {
+            getLogger().log(Level.SEVERE, "Error loading configuration", ex);
+        } catch (YAMLException ex) {
+            getLogger().log(Level.SEVERE, "Error loading configuration", ex);
+        }
+        return null;
+    }
+
+    private void copyDefault(String source, String dest) {
+        File destFile = new File(getDataFolder(), dest);
+        if (!destFile.exists()) {
+            try {
+                destFile.getParentFile().mkdirs();
+                InputStream in = getClass().getClassLoader().getResourceAsStream(source);
+                try {
+                    OutputStream out = new FileOutputStream(destFile);
+                    try {
+                        ByteStreams.copy(in, out);
+                    } finally {
+                        out.close();
+                    }
+                } finally {
+                    in.close();
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(EasyScript.class.getName()).log(Level.WARNING, "Error copying default " + dest, ex);
+            }
+        }
+    }
+
+    private void copyDefaults() {
+        for (String s : DEFAULTS) {
+            copyDefault(s, s);
+        }
+        // Autodetect the JavaScript engine and determine which default 
+        // library.js to copy.
+        ScriptEngineManager manager = new ScriptEngineManager();
+        for (ScriptEngineFactory f : manager.getEngineFactories()) {
+            if (f.getEngineName().toLowerCase().contains(NASHORN_ENGINE)) {
+                copyDefault(JS_LIBRARY_NASHORN, JS_LIBRARY);
+                break;
+            } else if (f.getEngineName().toLowerCase().contains(RHINO_ENGINE)) {
+                copyDefault(JS_LIBRARY_RHINO, JS_LIBRARY);
+                break;
+            }
+        }
     }
     
     @Override
     public void onEnable() {
         super.onEnable();
-        saveDefaultConfig();
+        copyDefaults();
         serverConfig = new Config(this, new File(getDataFolder(), SERVER_CONFIG));
         enableEngine();
     }
@@ -80,33 +164,62 @@ public class EasyScript extends JavaPlugin {
             c.save();
         }
         worldConfig.clear();
-        if (useUuids) {
-            for (Config c : playerUuidConfig.values()) {
-                c.save();
-            }
-            playerUuidConfig.clear();
-        } else {
-            for (Config c : playerNameConfig.values()) {
-                c.save();
-            }
-            playerNameConfig.clear();
+        for (Config c : playerUuidConfig.values()) {
+            c.save();
         }
+        playerUuidConfig.clear();
     }
 
     private void enableEngine() {
         ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            Thread.currentThread().setContextClassLoader(EasyScript.class.getClassLoader());
-            FileConfiguration config = getConfig();
-            ScriptEngineManager manager = new ScriptEngineManager(EasyScript.class.getClassLoader());
+            config = loadConfig();
+            if (config == null) {
+                getLogger().severe("Could not load configuration");
+                getServer().getPluginManager().disablePlugin(this);
+                return;
+            }
 
-            this.autoreload = config.getBoolean("autoreload", false);
-            this.useUuids = config.getBoolean("use-uuids", true);
-            this.migratePlayerConfigs = config.getBoolean("migrate-player-configs", true);
+            for (Map.Entry<String,String> e : config.getSystemProperties().entrySet()) {
+                System.setProperty(e.getKey(), e.getValue());
+            }
 
-            this.engine = manager.getEngineByName(config.getString("language"));
+            File lib = new File(getDataFolder(), config.getJarDirectory());
+            if (!lib.exists()) {
+                lib.mkdirs();
+            }
+
+            List<URL> libClasspath = new ArrayList<URL>();
+
+            for (File libFile : lib.listFiles(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    name = name.toLowerCase();
+                    return name.endsWith(".jar") || name.endsWith(".zip");
+                }
+            })) {
+                try {
+                    libClasspath.add(libFile.toURI().toURL());
+                } catch (MalformedURLException ex) {
+                    getLogger().log(Level.SEVERE, null, ex);
+                }
+            }
+
+            if (libClasspath.isEmpty()) {
+                this.libClassLoader = getClass().getClassLoader();
+            } else {
+                getLogger().log(Level.INFO, "Creating classloader for language runtime: {0}", libClasspath);
+                this.libClassLoader = URLClassLoader.newInstance(libClasspath.toArray(new URL[libClasspath.size()]), getClass().getClassLoader());
+            }
+
+            Thread.currentThread().setContextClassLoader(libClassLoader);
+
+            ScriptEngineManager manager = new ScriptEngineManager(libClassLoader);
+
+            this.engine = manager.getEngineByName(config.getLanguage());
+
             if (this.engine == null) {
-                getLogger().severe("Script engine named: " + config.getString("language") + " not found, disabling plugin.");
+                getLogger().severe("Script engine named: " + config.getLanguage() + " not found, disabling plugin.");
                 getServer().getPluginManager().disablePlugin(this);
                 return;
             } else {
@@ -142,7 +255,7 @@ public class EasyScript extends JavaPlugin {
             this.engineContext.setAttribute("log", getLogger(), 100);
             this.engineContext.setWriter(new LogWriter(Level.INFO));
             this.engineContext.setErrorWriter(new LogWriter(Level.WARNING));
-            for (String s : config.getStringList("libraries")) {
+            for (String s : config.getLibraries()) {
                 boolean found = false;
                 for (String suffix : engine.getFactory().getExtensions()) {
                     File library = new File(getDataFolder(), s + '.' + suffix);
@@ -165,18 +278,10 @@ public class EasyScript extends JavaPlugin {
                     getLogger().warning("Failed to find library file : " + s);
                 }
             }
-            for (String s : config.getStringList("scripts")) {
-                File scriptDirectory = new File(getDataFolder(), s);
-                if (!scriptDirectory.isDirectory()) {
-                    getLogger().warning("Script directory not found : " + scriptDirectory);
-                }
-
-                this.scriptDirectories.add(scriptDirectory);
-            }
             try {
                 CommandRegistration.updateHelp(this, getServer());
             } catch (UnsupportedOperationException e) {
-                // Ignored.
+                getLogger().log(Level.WARNING, "Failed to update help map", e);
             }
         } finally {
             Thread.currentThread().setContextClassLoader(oldClassLoader);
@@ -188,20 +293,23 @@ public class EasyScript extends JavaPlugin {
             HandlerList.unregisterAll(i);
         }
         registeredEventExecutors.clear();
+
         try {
             CommandRegistration.unregisterPluginCommands(getServer(), new HashSet(scriptCommands.values()));
             CommandRegistration.updateHelp(this, getServer());
         } catch (UnsupportedOperationException e) {
             getLogger().log(Level.WARNING, "There was an error unregistering a command, scriptreload will not correctly unregister commands");
         }
-        scriptCommands.clear();
+        this.scriptCommands.clear();
+
+        this.config = null;
+        this.libClassLoader = null;
         this.engine = null;
         this.invocable = null;
         this.compilable = null;
         this.engineContext = null;
         this.libraries.clear();
         this.scripts.clear();
-        this.scriptDirectories.clear();
     }
 
     /**
@@ -250,12 +358,25 @@ public class EasyScript extends JavaPlugin {
         if (holder == null) {
             throw new NoSuchMethodException("Script: " + script + " not found");
         }
-        ScriptContext context = new EasyScriptContext(this.engine, this.engineContext);
-        context.setAttribute(ScriptEngine.FILENAME, holder.getSource().getPath(), EasyScriptContext.SCRIPT_SCOPE);
-        for (Map.Entry<String,Object> e : params.entrySet()) {
-            context.setAttribute(e.getKey(), e.getValue(), EasyScriptContext.SCRIPT_SCOPE);
+        if (config.isUseScriptScope()) {
+            ScriptContext context = new EasyScriptContext(this.engine, this.engineContext);
+            context.setAttribute(ScriptEngine.FILENAME, holder.getSource().getPath(), EasyScriptContext.SCRIPT_SCOPE);
+            for (Map.Entry<String,Object> e : params.entrySet()) {
+                context.setAttribute(e.getKey(), e.getValue(), EasyScriptContext.SCRIPT_SCOPE);
+            }
+            return holder.getScript().eval(context);
+        } else {
+            for (Map.Entry<String,Object> e : params.entrySet()) {
+                this.engineContext.setAttribute(e.getKey(), e.getValue(), ScriptContext.ENGINE_SCOPE);
+            }
+            try {
+                return holder.getScript().eval(this.engineContext);
+            } finally {
+                for (String attr : params.keySet()) {
+                    this.engineContext.removeAttribute(attr, ScriptContext.ENGINE_SCOPE);
+                }
+            }
         }
-        return holder.getScript().eval(context);
     }
 
     /**
@@ -460,44 +581,7 @@ public class EasyScript extends JavaPlugin {
      * @return A configuration for the player.
      */
     public Config getPlayerConfig(Player player) {
-        if (useUuids) {
-            if(migratePlayerConfigs) {
-                File playerNameConfigFile = new File(getPlayerConfigDirectory(), player.getName() + ".yml");
-                File playerUuidConfigFile = new File(getPlayerConfigDirectory(), player.getUniqueId() + ".yml");
-                if (playerNameConfigFile.exists() && !playerUuidConfigFile.exists()) {
-                    playerNameConfigFile.renameTo(playerUuidConfigFile);
-                }
-            }
-            return getPlayerConfig(player.getUniqueId());
-        } else {
-            return getPlayerConfig(player.getName());
-        }
-    }
-
-    /**
-     * Get a per player configuration.
-     *
-     * If the player is online and we are configured to use player UUIDs,
-     * this will delegate to getPlayerConfig(Player)
-     * 
-     * @param player The name of the player.
-     * @return A configuration for the player.
-     * @throws IllegalStateException When we are configured to use UUIDs and the player is not online.
-     */
-    public Config getPlayerConfig(String playerName) {
-        if (useUuids) {
-            Player player = getServer().getPlayer(playerName);
-            if (player != null) {
-                return getPlayerConfig(player);
-            }
-            throw new IllegalStateException("Cannot load configuration by uuid for named offline players, use getPlayerConfig(Player) or getPlayerConfig(UUID)");
-        }
-        Config config = playerNameConfig.get(playerName);
-        if (config == null) {
-            config = new Config(this, new File(getPlayerConfigDirectory(), playerName + ".yml"));
-            playerNameConfig.put(playerName, config);
-        }
-        return config;
+        return getPlayerConfig(player.getUniqueId());
     }
 
     /**
@@ -517,23 +601,24 @@ public class EasyScript extends JavaPlugin {
         
 
     private boolean checkLibraries() {
-        if (!this.autoreload) {
-            return true;
-        }
-        for (Map.Entry<File, Long> e : this.libraries.entrySet()) {
-            if (((File) e.getKey()).lastModified() > ((Long) e.getValue()).longValue()) {
-                reload();
-                return false;
+        if (config.isAutoreload()) {
+            for (Map.Entry<File, Long> e : this.libraries.entrySet()) {
+                if (((File) e.getKey()).lastModified() > ((Long) e.getValue()).longValue()) {
+                    reload();
+                    return false;
+                }
             }
+            return true;
+        } else {
+            return false;
         }
-        return true;
     }
 
     private ScriptHolder getScript(String name) throws ScriptException {
         ScriptHolder cached = this.scripts.get(name);
 
         if (cached != null) {
-            if (this.autoreload) {
+            if (config.isAutoreload()) {
                 File source = cached.getSource();
                 if ((source.isFile()) && (source.lastModified() <= cached.getLastModified().longValue())) {
                     return cached;
@@ -545,9 +630,9 @@ public class EasyScript extends JavaPlugin {
         }
 
         LOOP:
-        for (File dir : this.scriptDirectories) {
+        for (String dir : config.getScriptPath()) {
             for (String suffix : engine.getFactory().getExtensions()) {
-                File script = new File(dir, name + '.' + suffix);
+                File script = new File(new File(getDataFolder(), dir), name + '.' + suffix);
                 if (script.isFile()) {
                     try {
                         CompiledScript compiledScript = this.compilable.compile(new FileReader(script));
@@ -608,10 +693,6 @@ public class EasyScript extends JavaPlugin {
             return true;
         }
         return false;
-    }
-
-    private Exception NoSuchMethodException() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     private class LogWriter extends Writer {
