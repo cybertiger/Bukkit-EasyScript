@@ -32,3 +32,5 @@ global libraryFunction
 
 def libraryFunction():
     server.broadcastMessage("A script called a library function")
+
+plugin.invokeLibraryFunction("libraryFunction")

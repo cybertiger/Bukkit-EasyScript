@@ -31,3 +31,5 @@ commandScripttest.setDescription("A command written in javascript")
 var libraryFunction = function() {
     server.broadcastMessage("A script called a library function")
 }
+
+plugin.invokeLibraryFunction("libaryFunction")

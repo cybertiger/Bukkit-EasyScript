@@ -15,4 +15,4 @@ unless $block.nil?
 end
 
 # Functions and variables from libraries are available here.
-EasyScript::libraryFunction()
+libraryFunction()

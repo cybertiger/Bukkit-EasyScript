@@ -39,8 +39,8 @@ commandScripttest = $_plugin.registerCommand(
 commandScripttest.setUsage("/<command>")
 commandScripttest.setDescription("A command implemented in ruby")
 
-module EasyScript
-    def self.libraryFunction()
-        $_server.broadcastMessage("A script called a library function")
-    end
+def libraryFunction()
+    $_server.broadcastMessage("A script called a library function")
 end
+
+$_plugin.invokeLibraryFunction("libraryFunction")

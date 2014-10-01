@@ -24,3 +24,5 @@ libraryScripttest.description = "A command written in groovy"
 void libraryFunction() {
     server.broadcastMessage("A script called a library function")
 }
+
+plugin.invokeLibraryFunction("libraryFunction")
