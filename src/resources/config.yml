@@ -11,12 +11,11 @@ systemProperties:
     org.jruby.embed.localcontext.scope: 'singleton'
     org.jruby.embed.localvariable.behavior: 'global'
     org.jruby.embed.compilemode: off
+#    org.jruby.embed.class.path: 'plugins/EasyScript/ruby'
     # See https://wiki.python.org/jython/Settings
     python.cachedir: 'pythoncachedir'
     python.cachedir.skip: false
-    # Groovy uses no system properties other than groovy.home which is not
-    # required if you use the groovy-all jar
-    # groovy.home /home/user/groovy-2.3.7
+#    python.path: plugins/EasyScript/python
 libraries:
   - library
 scriptPath:

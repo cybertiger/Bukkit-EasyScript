@@ -66,6 +66,11 @@ public class EasyScript extends JavaPlugin {
         "scripts/test.py",
         "scripts/test.groovy"
     };
+    private static final String[] DEFAULT_LIBS = new String[] {
+        "groovy-all-2.3.7.jar",
+        "jruby-complete-1.7.16.jar",
+        "jython-standalone-2.5.3.jar"
+    };
     public static final String SERVER_CONFIG = "server.yml";
     public static final String WORLD_CONFIG_DIRECTORY = "world";
     public static final String PLAYER_CONFIG_DIRECTORY = "player";
@@ -112,15 +117,17 @@ public class EasyScript extends JavaPlugin {
             try {
                 destFile.getParentFile().mkdirs();
                 InputStream in = getClass().getClassLoader().getResourceAsStream(source);
-                try {
-                    OutputStream out = new FileOutputStream(destFile);
+                if (in != null) {
                     try {
-                        ByteStreams.copy(in, out);
+                        OutputStream out = new FileOutputStream(destFile);
+                        try {
+                            ByteStreams.copy(in, out);
+                        } finally {
+                            out.close();
+                        }
                     } finally {
-                        out.close();
+                        in.close();
                     }
-                } finally {
-                    in.close();
                 }
             } catch (IOException ex) {
                 Logger.getLogger(EasyScript.class.getName()).log(Level.WARNING, "Error copying default " + dest, ex);
@@ -145,11 +152,22 @@ public class EasyScript extends JavaPlugin {
             }
         }
     }
+
+    private void copyLibs() {
+        File lib = new File(getDataFolder(), config.getJarDirectory());
+        if (!lib.exists()) {
+            lib.mkdirs();
+            for (String s : DEFAULT_LIBS) {
+                copyDefault(s, config.getJarDirectory() + File.separatorChar + s);
+            }
+        }
+    }
     
     @Override
     public void onEnable() {
-        config = loadConfig();
         copyDefaults();
+        config = loadConfig();
+        copyLibs();
         File lib = new File(getDataFolder(), config.getJarDirectory());
         if (!lib.exists()) {
             lib.mkdirs();
@@ -302,8 +320,6 @@ public class EasyScript extends JavaPlugin {
         }
         this.scriptCommands.clear();
 
-        this.config = null;
-        this.libClassLoader = null;
         this.engine = null;
         this.invocable = null;
         this.compilable = null;
@@ -384,7 +400,7 @@ public class EasyScript extends JavaPlugin {
      */
     public void reload() {
         disableEngine();
-        reloadConfig();
+        config = loadConfig();
         enableEngine();
     }
 

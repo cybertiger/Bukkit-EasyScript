@@ -29,6 +29,52 @@
           <target>1.6</target>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>2.9</version>
+        <executions>
+          <execution>
+            <id>copy</id>
+            <!-- Put it in the test phase to make it run before jar:jar -->
+            <phase>test</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.codehaus.groovy</groupId>
+                  <artifactId>groovy-all</artifactId>
+                  <version>2.3.7</version>
+                  <type>jar</type>
+                  <overWrite>false</overWrite>
+                  <outputDirectory>${project.build.directory}/classes</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.jruby</groupId>
+                  <artifactId>jruby-complete</artifactId>
+                  <version>1.7.16</version>
+                  <type>jar</type>
+                  <overWrite>false</overWrite>
+                  <outputDirectory>${project.build.directory}/classes</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.python</groupId>
+                  <artifactId>jython-standalone</artifactId>
+                  <version>2.5.3</version>
+                  <type>jar</type>
+                  <overWrite>false</overWrite>
+                  <outputDirectory>${project.build.directory}/classes</outputDirectory>
+                </artifactItem>
+              </artifactItems>
+              <outputDirectory>${project.build.directory}/wars</outputDirectory>
+              <overWriteReleases>false</overWriteReleases>
+              <overWriteSnapshots>true</overWriteSnapshots>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
     <extensions>
       <extension>

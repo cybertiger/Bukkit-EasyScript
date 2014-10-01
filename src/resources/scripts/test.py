@@ -12,7 +12,6 @@ if player:
 if block:
     server.broadcastMessage("CommandBlock at " + str(block.x) + ", " + str(block.y) + ", " + str(block.z) + " called python")
 
-import easyscript
+global libraryFunction
 
-# Functions and variables from libraries are not current available in python.
 libraryFunction()
