@@ -32,4 +32,4 @@ var libraryFunction = function() {
     server.broadcastMessage("A script called a library function")
 }
 
-plugin.invokeLibraryFunction("libaryFunction")
+plugin.invokeLibraryFunction("libraryFunction")
