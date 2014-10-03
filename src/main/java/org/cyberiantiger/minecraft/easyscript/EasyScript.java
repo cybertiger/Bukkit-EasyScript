@@ -41,6 +41,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.cyberiantiger.minecraft.easyscript.config.ESConfig;
+import org.cyberiantiger.minecraft.easyscript.config.ESVariable;
 import org.cyberiantiger.minecraft.easyscript.unsafe.CommandRegistration;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.CustomClassLoaderConstructor;
@@ -102,7 +103,9 @@ public class EasyScript extends JavaPlugin {
         try {
             Yaml configLoader = new Yaml(new CustomClassLoaderConstructor(ESConfig.class, getClass().getClassLoader()));
             configLoader.setBeanAccess(BeanAccess.FIELD);
-            return configLoader.loadAs(new FileReader(getConfigFile()), ESConfig.class);
+            ESConfig config = configLoader.loadAs(new FileReader(getConfigFile()), ESConfig.class);
+            config.init();
+            return config;
         } catch (IOException ex) {
             getLogger().log(Level.SEVERE, "Error loading configuration", ex);
         } catch (YAMLException ex) {
@@ -268,9 +271,9 @@ public class EasyScript extends JavaPlugin {
                 return;
             }
             this.engineContext = this.engine.getContext();
-            this.engineContext.setAttribute("plugin", this, 100);
-            this.engineContext.setAttribute("server", getServer(), 100);
-            this.engineContext.setAttribute("log", getLogger(), 100);
+            this.engineContext.setAttribute(config.getVariableNames().get(ESVariable.SERVER), getServer(), 100);
+            this.engineContext.setAttribute(config.getVariableNames().get(ESVariable.PLUGIN), this, 100);
+            this.engineContext.setAttribute(config.getVariableNames().get(ESVariable.LOG), getLogger(), 100);
             this.engineContext.setWriter(new LogWriter(Level.INFO));
             this.engineContext.setErrorWriter(new LogWriter(Level.WARNING));
             for (String s : config.getLibraries()) {
@@ -677,17 +680,17 @@ public class EasyScript extends JavaPlugin {
 
             Map<String,Object> env = new HashMap<String,Object>();
             if ((sender instanceof BlockCommandSender)) {
-                env.put("block", ((BlockCommandSender)sender).getBlock());
+                env.put(config.getVariableNames().get(ESVariable.BLOCK), ((BlockCommandSender)sender).getBlock());
             } else {
-                env.put("block", null);
+                env.put(config.getVariableNames().get(ESVariable.BLOCK), null);
             }
             if ((sender instanceof Player)) {
-                env.put("player", sender);
+                env.put(config.getVariableNames().get(ESVariable.PLAYER), sender);
             } else {
-                env.put("player", null);
+                env.put(config.getVariableNames().get(ESVariable.PLAYER), null);
             }
-            env.put("sender", sender);
-            env.put("args", shiftArgs);
+            env.put(config.getVariableNames().get(ESVariable.SENDER), sender);
+            env.put(config.getVariableNames().get(ESVariable.ARGS), shiftArgs);
             try {
                 invokeScript(script, env);
             } catch (ScriptException ex) {
