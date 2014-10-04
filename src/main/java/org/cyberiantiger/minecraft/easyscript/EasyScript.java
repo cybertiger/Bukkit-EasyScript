@@ -56,7 +56,6 @@ public class EasyScript extends JavaPlugin {
     private static final String NASHORN_ENGINE = "nashorn";
     private static final String RHINO_ENGINE = "rhino";
     private static final String[] DEFAULTS = new String[] {
-        CONFIG,
         JS_LIBRARY_RHINO,
         JS_LIBRARY_NASHORN,
         "library.rb",
@@ -99,83 +98,25 @@ public class EasyScript extends JavaPlugin {
         return new File(getDataFolder(), CONFIG);
     }
 
-    private ESConfig loadConfig() {
+    private void loadConfig() {
         try {
             Yaml configLoader = new Yaml(new CustomClassLoaderConstructor(ESConfig.class, getClass().getClassLoader()));
             configLoader.setBeanAccess(BeanAccess.FIELD);
-            ESConfig config = configLoader.loadAs(new FileReader(getConfigFile()), ESConfig.class);
+            config = configLoader.loadAs(new FileReader(getConfigFile()), ESConfig.class);
             config.init();
-            return config;
+            return;
         } catch (IOException ex) {
             getLogger().log(Level.SEVERE, "Error loading configuration", ex);
         } catch (YAMLException ex) {
             getLogger().log(Level.SEVERE, "Error loading configuration", ex);
         }
-        return null;
+        getLogger().severe("Your config.yml has fatal errors, using defaults.");
+        config = new ESConfig();
     }
 
-    private void copyDefault(String source, String dest) {
-        File destFile = new File(getDataFolder(), dest);
-        if (!destFile.exists()) {
-            try {
-                destFile.getParentFile().mkdirs();
-                InputStream in = getClass().getClassLoader().getResourceAsStream(source);
-                if (in != null) {
-                    try {
-                        OutputStream out = new FileOutputStream(destFile);
-                        try {
-                            ByteStreams.copy(in, out);
-                        } finally {
-                            out.close();
-                        }
-                    } finally {
-                        in.close();
-                    }
-                }
-            } catch (IOException ex) {
-                Logger.getLogger(EasyScript.class.getName()).log(Level.WARNING, "Error copying default " + dest, ex);
-            }
-        }
-    }
-
-    private void copyDefaults() {
-        for (String s : DEFAULTS) {
-            copyDefault(s, s);
-        }
-        // Autodetect the JavaScript engine and determine which default 
-        // library.js to copy.
-        ScriptEngineManager manager = new ScriptEngineManager();
-        for (ScriptEngineFactory f : manager.getEngineFactories()) {
-            if (f.getEngineName().toLowerCase().contains(NASHORN_ENGINE)) {
-                copyDefault(JS_LIBRARY_NASHORN, JS_LIBRARY);
-                break;
-            } else if (f.getEngineName().toLowerCase().contains(RHINO_ENGINE)) {
-                copyDefault(JS_LIBRARY_RHINO, JS_LIBRARY);
-                break;
-            }
-        }
-    }
-
-    private void copyLibs() {
+    private void loadClassLoader() {
         File lib = new File(getDataFolder(), config.getJarDirectory());
-        if (!lib.exists()) {
-            lib.mkdirs();
-            for (String s : DEFAULT_LIBS) {
-                copyDefault(s, config.getJarDirectory() + File.separatorChar + s);
-            }
-        }
-    }
-    
-    @Override
-    public void onEnable() {
-        copyDefaults();
-        config = loadConfig();
-        copyLibs();
-        File lib = new File(getDataFolder(), config.getJarDirectory());
-        if (!lib.exists()) {
-            lib.mkdirs();
-        }
-        
+
         List<URL> libClasspath = new ArrayList<URL>();
         
         for (File libFile : lib.listFiles(new FilenameFilter() {
@@ -200,7 +141,71 @@ public class EasyScript extends JavaPlugin {
         }
 
         serverConfig = new Config(this, new File(getDataFolder(), SERVER_CONFIG));
+    }
 
+    private boolean copyDefault(String source, String dest) {
+        File destFile = new File(getDataFolder(), dest);
+        if (!destFile.exists()) {
+            try {
+                destFile.getParentFile().mkdirs();
+                InputStream in = getClass().getClassLoader().getResourceAsStream(source);
+                if (in != null) {
+                    try {
+                        OutputStream out = new FileOutputStream(destFile);
+                        try {
+                            ByteStreams.copy(in, out);
+                        } finally {
+                            out.close();
+                        }
+                    } finally {
+                        in.close();
+                    }
+                    return true;
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(EasyScript.class.getName()).log(Level.WARNING, "Error copying default " + dest, ex);
+            }
+        }
+        return false;
+    }
+
+    private void copyDefaults() {
+        if (copyDefault(CONFIG, CONFIG)) {
+            // Only copy default scripts if config.yml does not already exist.
+            for (String s : DEFAULTS) {
+                copyDefault(s, s);
+            }
+            // Autodetect the JavaScript engine and determine which default
+            // library.js to copy.
+            ScriptEngineManager manager = new ScriptEngineManager();
+            for (ScriptEngineFactory f : manager.getEngineFactories()) {
+                if (f.getEngineName().toLowerCase().contains(NASHORN_ENGINE)) {
+                    copyDefault(JS_LIBRARY_NASHORN, JS_LIBRARY);
+                    break;
+                } else if (f.getEngineName().toLowerCase().contains(RHINO_ENGINE)) {
+                    copyDefault(JS_LIBRARY_RHINO, JS_LIBRARY);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void copyLibs() {
+        File lib = new File(getDataFolder(), config.getJarDirectory());
+        if (!lib.exists()) {
+            lib.mkdirs();
+            for (String s : DEFAULT_LIBS) {
+                copyDefault(s, config.getJarDirectory() + File.separatorChar + s);
+            }
+        }
+    }
+    
+    @Override
+    public void onEnable() {
+        copyDefaults();
+        loadConfig();
+        copyLibs();
+        loadClassLoader();
         enableEngine();
     }
 
@@ -222,12 +227,6 @@ public class EasyScript extends JavaPlugin {
     private void enableEngine() {
         ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            if (config == null) {
-                getLogger().severe("Could not load configuration");
-                getServer().getPluginManager().disablePlugin(this);
-                return;
-            }
-
             for (Map.Entry<String,String> e : config.getSystemProperties().entrySet()) {
                 System.setProperty(e.getKey(), e.getValue());
             }
@@ -310,13 +309,13 @@ public class EasyScript extends JavaPlugin {
     }
 
     private void disableEngine() {
-        for (Listener i : registeredEventExecutors) {
+        for (Listener i : this.registeredEventExecutors) {
             HandlerList.unregisterAll(i);
         }
-        registeredEventExecutors.clear();
+        this.registeredEventExecutors.clear();
 
         try {
-            CommandRegistration.unregisterPluginCommands(getServer(), new HashSet(scriptCommands.values()));
+            CommandRegistration.unregisterPluginCommands(getServer(), new HashSet(this.scriptCommands.values()));
             CommandRegistration.updateHelp(this, getServer());
         } catch (UnsupportedOperationException e) {
             getLogger().log(Level.WARNING, "There was an error unregistering a command, scriptreload will not correctly unregister commands");
@@ -401,9 +400,12 @@ public class EasyScript extends JavaPlugin {
     /**
      * Reload all scripts.
      */
-    public void reload() {
+    public void reload(boolean classLoader) {
         disableEngine();
-        config = loadConfig();
+        loadConfig();
+        if (classLoader) {
+            loadClassLoader();
+        }
         enableEngine();
     }
 
@@ -623,7 +625,7 @@ public class EasyScript extends JavaPlugin {
         if (config.isAutoreload()) {
             for (Map.Entry<File, Long> e : this.libraries.entrySet()) {
                 if (((File) e.getKey()).lastModified() > ((Long) e.getValue()).longValue()) {
-                    reload();
+                    reload(false);
                     return false;
                 }
             }
@@ -707,7 +709,7 @@ public class EasyScript extends JavaPlugin {
             if (args.length != 0) {
                 return false;
             }
-            reload();
+            reload(args.length >= 1 && "classpath".equalsIgnoreCase(args[0]));
             sender.sendMessage("Scripts reloaded.");
             return true;
         }

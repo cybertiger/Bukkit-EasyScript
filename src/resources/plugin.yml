@@ -9,5 +9,5 @@ commands:
     permission: easyscript.script
   scriptreload:
     description: Recompile scripts
-    usage: /scriptreload
+    usage: /scriptreload [classpath]
     permission: easyscript.reload
