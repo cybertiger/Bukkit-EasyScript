@@ -706,12 +706,13 @@ public class EasyScript extends JavaPlugin {
             return true;
         }
         if ("scriptreload".equals(command.getName())) {
-            if (args.length != 0) {
-                return false;
+            if (args.length == 0) {
+                reload(false);
+                sender.sendMessage("Scripts reloaded.");
+            } else if(args.length == 1 && "classpath".equalsIgnoreCase(args[0])){
+                reload(true);
+                sender.sendMessage("Scripts and classpath reloaded.");
             }
-            reload(args.length >= 1 && "classpath".equalsIgnoreCase(args[0]));
-            sender.sendMessage("Scripts reloaded.");
-            return true;
         }
         return false;
     }
